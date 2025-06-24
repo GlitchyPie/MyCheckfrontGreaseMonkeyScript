@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Checkfront Overnight Report
-// @namespace    http://tampermonkey.net/
-// @version      2025-06-24T12:19
-// @description  try to take over the world!
-// @author       You
+// @name         Checkfront Overnight Report Helper Script
+// @namespace    http://cat.checkfront.co.uk/
+// @version      2025-06-24T12:23
+// @description  Add additional reporting functions / formats to CheckFront
+// @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=checkfront.co.uk
 // @grant        none
