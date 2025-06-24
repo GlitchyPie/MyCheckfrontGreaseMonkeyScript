@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report
 // @namespace    http://tampermonkey.net/
-// @version      2025-06-23
+// @version      2025-06-24T11:58
 // @description  try to take over the world!
 // @author       You
 // @match        https://cat.checkfront.co.uk/*
@@ -43,13 +43,12 @@ console.log('Hello world');
 
         return $title;
     }
-    function AddReportButton(){
+    function AddDailyManifestReportButtons(){
         const $newBookingButton = $('#bookingButtonDesktop');
         if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
 
         const $cloneButton = $newBookingButton.clone(true, false);
-
-
+        
         $cloneButton.attr({'id':'overnightButtonDesktop',
                            'href':'about:blank'});
         $cloneButton.children('span').text('Overnight Report');
@@ -59,10 +58,18 @@ console.log('Hello world');
             DoCsvProcess();
         });
     }
+    function AddReportButton(){
+        switch(true){
+            case /booking\/manifest/.test(window.location):
+                AddDailyManifestReportButtons();
+                break;
+        }
+
+    }
     function ProcessMutations(mutations, observer){
         AddReportButton();
     }
-
+    AddReportButton();
 
 /*
     (function AddMenuItems_Main(){
@@ -91,14 +98,6 @@ console.log('Hello world');
         $lastMenuItem.before($divider.clone(true,true));
     })();
 */
-    (function AddButtonToDailyManifest(){
-        if(/booking\/manifest/.test(window.location)){
-            console.log(window.location);
-            const $title = FindPageTitle();
-
-            //console.log($title);
-        }
-    })();
 
     function BADLY_PARSE_QUOTED_CSV_LINE(line){
         if(!(!!line)){return;}
