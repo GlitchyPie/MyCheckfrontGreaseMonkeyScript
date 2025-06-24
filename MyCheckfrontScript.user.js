@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report
 // @namespace    http://tampermonkey.net/
-// @version      2025-06-24T12:15
+// @version      2025-06-24T12:19
 // @description  try to take over the world!
 // @author       You
 // @match        https://cat.checkfront.co.uk/*
@@ -247,7 +247,7 @@ console.log('Hello world');
     }
 
     //======================== ConvertDailyManifest_2_OvernightReport ========================
-        function ConvertDailyManifest_2_OvernightReport(){
+    function ConvertDailyManifest_2_OvernightReport(){
         $.get({
             url:'https://cat.checkfront.co.uk/get/export/',
             data:window.location.search.substring(1),
@@ -334,7 +334,7 @@ console.log('Hello world');
         $cloneButton.insertBefore($newBookingButton);
         $cloneButton.on('click',(event)=>{
             event.preventDefault();
-            DoCsvProcess();
+            ConvertDailyManifest_2_OvernightReport();
         });
     }
     function AddReportButtons(){
