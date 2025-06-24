@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report
 // @namespace    http://tampermonkey.net/
-// @version      2025-06-24T11:58
+// @version      2025-06-24T12:15
 // @description  try to take over the world!
 // @author       You
 // @match        https://cat.checkfront.co.uk/*
@@ -15,17 +15,18 @@ const $J_Master = $J_Query.noConflict(true);
 console.log('Hello world');
 
 (function($) {
+    'use strict';
+    
     console.log('Running main function...');
 
     //                     Column Header,  Column Value
-    const HTML_HEADERS = [['Room', '{Product Name}'],
-                          ['Name', [['Booking', '{First name} {Surname}'],['Guest','{Guest First Name} {Guest Last Name}']]],
-                          ['Checkin Status',[['Booking','{Check In / Out}'],['Guest','{Guest Check In Status}']]],
-                          ['Accessability needs','{Accessibility requirements}']
-                          ];
+    const OVERNIGHT_HEADERS = [['Room', '{Product Name}'],
+                               ['Name', [['Booking', '{First name} {Surname}'],['Guest','{Guest First Name} {Guest Last Name}']]],
+                               ['Checkin Status',[['Booking','{Check In / Out}'],['Guest','{Guest Check In Status}']]],
+                               ['Accessability needs','{Accessibility requirements}']
+                              ];
 
-    'use strict';
-
+/*
     const $divider = $('<li class="divider"></li>');
     const $reportButton = $('<li><a href="about:blank">Overnight Report</a></li>');
     $reportButton.on('click', (event)=>{
@@ -33,45 +34,6 @@ console.log('Hello world');
         DoCsvProcess();
     });
 
-
-
-    function FindPageTitle(){
-        const $content = $('#content');
-        const $pageHeaders = $content.find('div[class^="PageHeader"]');
-        const $pagelg = $pageHeaders.find('div.page-lg');
-        const $title = $pagelg.find('div[class^="Title"]').eq(0);
-
-        return $title;
-    }
-    function AddDailyManifestReportButtons(){
-        const $newBookingButton = $('#bookingButtonDesktop');
-        if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
-
-        const $cloneButton = $newBookingButton.clone(true, false);
-        
-        $cloneButton.attr({'id':'overnightButtonDesktop',
-                           'href':'about:blank'});
-        $cloneButton.children('span').text('Overnight Report');
-        $cloneButton.insertBefore($newBookingButton);
-        $cloneButton.on('click',(event)=>{
-            event.preventDefault();
-            DoCsvProcess();
-        });
-    }
-    function AddReportButton(){
-        switch(true){
-            case /booking\/manifest/.test(window.location):
-                AddDailyManifestReportButtons();
-                break;
-        }
-
-    }
-    function ProcessMutations(mutations, observer){
-        AddReportButton();
-    }
-    AddReportButton();
-
-/*
     (function AddMenuItems_Main(){
         const $navTab = $('#reports-nav-tab');
         if($navTab.length === 0){console.log('#reports-nav-tab not found'); return}
@@ -98,16 +60,10 @@ console.log('Hello world');
         $lastMenuItem.before($divider.clone(true,true));
     })();
 */
-
+    //================================== CSV Parsing =========================================
     function BADLY_PARSE_QUOTED_CSV_LINE(line){
         if(!(!!line)){return;}
-
-        //const ar = [];
-        //for (const c of line) {
-        //    ar.push(c);
-        //}
-        //ar.push(','); //Just forces the flushing of the last part.
-
+        
         const outputAr = [];
         let inPart = false
         let currentPart = "";
@@ -125,7 +81,7 @@ console.log('Hello world');
                          inPart = true;
                     }else{
                         //If we are in a part and the next character after the current double quote is a double qutoe,
-                        //then the double qutoe is escaped and should be considered a single double quote
+                        //then the double quote is escaped and should be considered a single double quote
                         if(nextChr === '"'){
                             i++; //Skip the next character
                             currentPart += chr;
@@ -225,6 +181,8 @@ console.log('Hello world');
         }
         return output;
     }
+    //========================================================================================
+    
     function CSV_2_HTML(data, headers){
         const rx = /\{(.+?)\}/ig;
         const isWhiteRx = /^\s+$/;
@@ -288,8 +246,36 @@ console.log('Hello world');
         return out;
     }
 
-    function DoCsvProcess_3(data,result,XHR){
-        const HTML = CSV_2_HTML(data, HTML_HEADERS);
+    //======================== ConvertDailyManifest_2_OvernightReport ========================
+        function ConvertDailyManifest_2_OvernightReport(){
+        $.get({
+            url:'https://cat.checkfront.co.uk/get/export/',
+            data:window.location.search.substring(1),
+            success:ConvertDailyManifest_2_OvernightReport_2,
+            dataType:'html'
+        });
+    }
+    function ConvertDailyManifest_2_OvernightReport_2(data, result, xhr){
+        const $frame = $(data);
+        const $form = $frame.find('#export_form').eq(0);
+
+        $form.find('#rpt_name').val('Overnight Report');
+        $form.find('#format').val('csv');
+        $form.find('#columns').val('*');
+        $form.find('#destination').val('desktop');
+
+        const formData = $form.serialize();
+
+        $.get({
+                url:'https://cat.checkfront.co.uk/booking/manifest/',
+                data: formData,
+                success:ConvertDailyManifest_2_OvernightReport_3,
+                dataType:'text'
+            });
+
+    }
+    function ConvertDailyManifest_2_OvernightReport_3(data,result,XHR){
+        const HTML = CSV_2_HTML(data, OVERNIGHT_HEADERS);
 
         const $table = $(HTML);
         $table.css({
@@ -320,49 +306,59 @@ console.log('Hello world');
         const $page = $content.children().eq(0).children('div.page-lg').eq(0);
         const $controls = $page.children().eq(0);
 
-        $page.empty();
+        $page.empty(); //This breaks stuff!
         //$page.append($controls);
         $page.append($table);
     }
+    //========================================================================================
 
-    function DoCsvProcess_2(data, result, xhr){
-        const $frame = $(data);
-        const $form = $frame.find('#export_form').eq(0);
 
-        $form.find('#rpt_name').val('Overnight Report');
-        $form.find('#format').val('csv');
-        $form.find('#columns').val('*');
-        $form.find('#destination').val('desktop');
+    function FindPageTitle(){
+        const $content = $('#content');
+        const $pageHeaders = $content.find('div[class^="PageHeader"]');
+        const $pagelg = $pageHeaders.find('div.page-lg');
+        const $title = $pagelg.find('div[class^="Title"]').eq(0);
 
-        const formData = $form.serialize();
-
-        //formData += ('&' + window.location.search.substring(1));
-
-        $.get({
-                url:'https://cat.checkfront.co.uk/booking/manifest/',
-                data: formData,
-                success:DoCsvProcess_3,
-                dataType:'text'
-            });
-
+        return $title;
     }
-    function DoCsvProcess(){
-        $.get({
-            url:'https://cat.checkfront.co.uk/get/export/',
-            data:window.location.search.substring(1),
-            success:DoCsvProcess_2,
-            dataType:'html'
+    
+    function AddDailyManifestReportButtons(){
+        const $newBookingButton = $('#bookingButtonDesktop');
+        if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
+
+        const $cloneButton = $newBookingButton.clone(true, false);
+        
+        $cloneButton.attr({'id':'overnightButtonDesktop',
+                           'href':'about:blank'});
+        $cloneButton.children('span').text('Overnight Report');
+        $cloneButton.insertBefore($newBookingButton);
+        $cloneButton.on('click',(event)=>{
+            event.preventDefault();
+            DoCsvProcess();
         });
     }
+    function AddReportButtons(){
+        switch(true){
+            case /booking\/manifest/.test(window.location):
+                AddDailyManifestReportButtons();
+                break;
+        }
 
+    }
+    AddReportButtons();
 
+    
+    //=================================== Observer set up= ===================================
+    function ProcessMutations(mutations, observer){
+        AddReportButtons();
+    }
     const observerOptions = {
             subtree: false,
             attributes: false,
             characterData: false,
             childList: true
         };
-
     const myObserver = new MutationObserver(ProcessMutations);
     myObserver.observe($('#content')[0],observerOptions);
+    //========================================================================================
 })($J_Master);
