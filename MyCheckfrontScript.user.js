@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-06-30T16:17
+// @version      2025-07-02T14:11
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=checkfront.co.uk
-// @grant        none
+// @grant        GM_download
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
 // ==/UserScript==
 const $J_Query = jQuery;
@@ -39,6 +39,159 @@ console.log('Hello world');
 </g>
 </svg>
 `;
+
+    //https://github.com/n3r4zzurr0/svg-spinners
+    const MY_SPINNER = `
+<svg width="120" height="120" stroke="#000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g><circle cx="12" cy="12" r="9.5" fill="none" stroke-width="3" stroke-linecap="round"><animate attributeName="stroke-dasharray" dur="1.5s" calcMode="spline" values="0 150;42 150;42 150;42 150" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="1.5s" calcMode="spline" values="0;-16;-59;-59" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/></circle><animateTransform attributeName="transform" type="rotate" dur="2s" values="0 12 12;360 12 12" repeatCount="indefinite"/></g></svg>
+`;
+    const $MYSPINNER = $('<div id="my-spinner"><div>' + MY_SPINNER + '</div></div>');
+
+
+    ( //BASED ON: https://stackoverflow.com/questions/4232557/jquery-css-write-into-the-style-tag
+        function( $$ ){
+            $$.cssStyleSheet={
+                insertRule:function(selector,rules,contxt){
+                    var context=contxt||document,stylesheet;
+
+                    if(typeof context.styleSheets=='object')
+                    {
+                        if(context.styleSheets.length)
+                        {
+                            stylesheet=context.styleSheets[context.styleSheets.length-1];
+                        }
+                        if(!stylesheet)
+                        {
+                            if(context.createStyleSheet)
+                            {
+                                stylesheet=context.createStyleSheet();
+                            }
+                            else
+                            {
+                                context.getElementsByTagName('head')[0].appendChild(context.createElement('style'));
+                                stylesheet=context.styleSheets[context.styleSheets.length-1];
+                            }
+                        }
+                        if(stylesheet.addRule)
+                        {
+                            for(var i=0;i<selector.length;++i)
+                            {
+                                stylesheet.addRule(selector[i],rules);
+                            }
+                        }
+                        else
+                        {
+                            stylesheet.insertRule(selector.join(',') + '{' + rules + '}', stylesheet.cssRules.length);
+                        }
+                    }
+                },
+                createSheet:function(rules,contxt){
+                    const context = contxt||document;
+                    let stylesheet;
+                    if((document.adoptedStyleSheets) && (document.adoptedStyleSheets.push)){
+                        stylesheet = new CSSStyleSheet();
+                        if(stylesheet.replaceSync){
+                            stylesheet.replaceSync(rules);
+                        }
+                        else if(stylesheet.replace){
+                            stylesheet.replace(rules);
+                        }
+                        else
+                        {
+                            throw 'No replace function';
+                        }
+                        document.adoptedStyleSheets.push(stylesheet);
+                    }else{
+                        stylesheet = document.createElement('style')
+                        stylesheet.innerHTML = rules;
+                        document.head.appendChild(stylesheet);
+                    }
+                    return stylesheet;
+                }
+            };
+        }
+    )($);
+
+    const MY_CSS = `
+table.scriptTable{
+    border:1px solid black;
+    width:100%;
+    color:black;
+}
+table.scriptTable thead{
+    border-bottom:2px solid black;
+}
+table.scriptTable tbody{
+
+}
+
+table.scriptTable thead th{
+    border:2px solid black;
+}
+table.scriptTable td{
+    border-left:1px solid grey;
+}
+table.scriptTable tr>td:first-child{
+    border-left:revert
+}
+table.scriptTable tr{
+    border-top:1px solid black;
+}
+
+table.scriptTable.guests{
+    margin-top:10px;
+}
+table.scriptTable.guests td:not(:first-child){
+    text-align:center;
+}
+table.scriptTable.guests td:nth-last-child(-n+2){
+    max-width:9vw;
+}
+table.scriptTable.guests thead th:nth-last-child(-n+2){
+    max-width:9vw;
+}
+table.scriptTable.guests td.subRowLabel {
+    padding-left:2rem;
+}
+table.scriptTable.guests td:not([class]):first-child {
+    font-weight:bold;
+    padding-left:0.5rem;
+}
+
+#my-spinner{
+    position:fixed;
+    width:100%;
+    height:100%;
+    background-color:white;
+    z-index:10;
+}
+#my-spinner>div{
+    position:relative;
+    width:120px;
+    height:120px;
+    margin:auto;
+    top:50%;
+    transform: translateY(-50%);
+}
+
+a.scriptGuestBtn{
+    cursor:pointer;
+    margin-top:10px;
+    margin-right:5px;
+}
+
+#flashing-arrow-thing{
+    position:fixed;
+    height:256px;
+    width:256px;
+    top: 100vh;
+    left: 100vw;
+    transform:translate(-100%,-100%);
+    display:none;
+    cursor:pointer;
+}
+    `;
+
+    $.cssStyleSheet.createSheet(MY_CSS);
 
     //================================== CSV Parsing =========================================
     function BADLY_PARSE_QUOTED_CSV_LINE(line){
@@ -161,7 +314,7 @@ console.log('Hello world');
         }
         return output;
     }
-    //========================================================================================
+    //================================= CSV converting =======================================
 
     function CSV_2_TABLE(parsed, html_headers){
         const rx = /\{(.+?)\}/ig;
@@ -265,81 +418,27 @@ console.log('Hello world');
         return out;
     }
 
-    //======================== ConvertDailyManifest_2_OvernightReport ========================
+    function TABLE_2_QUOTEDCSV(table){
+        let csv = "";
 
-    //*******************************
-    //* Request the export form then pass the results to step 2.
-    //*******************************
-    function ConvertDailyManifest_2_OvernightReport(){
-        $.get({
-            url:'https://cat.checkfront.co.uk/get/export/',
-            data:window.location.search.substring(1),
-            success:ConvertDailyManifest_2_OvernightReport_2,
-            dataType:'html'
-        });
+        for(const row of table){
+            for(const cell of row){
+                if(cell === undefined){
+                    csv += '""';
+                }else{
+                    csv += `"${cell.replace('"','""')}",`;
+                }
+            }
+            csv = csv.slice(0,-1) + '\r\n';
+        }
+
+        return csv.slice(0,-2);
     }
-    //*******************************
-    //* Change some the form values and use the form data to request the export CSV.
-    //* Pass the CSV to step 3
-    //*******************************
-    function ConvertDailyManifest_2_OvernightReport_2(data, result, xhr){
-        const $frame = $(data);
-        const $form = $frame.find('#export_form').eq(0);
 
-        $form.find('#rpt_name').val('Overnight Report');
-        $form.find('#format').val('csv');
-        $form.find('#columns').val('*');
-        $form.find('#destination').val('desktop');
-
-        const formData = $form.serialize();
-
-        $.get({
-                url:'https://cat.checkfront.co.uk/booking/manifest/',
-                data: formData,
-                success:ConvertDailyManifest_2_OvernightReport_3,
-                dataType:'text'
-            });
-
+    //================================ Helper functions ======================================
+    function ApplyGenericTableFormatting($table){
+        $table.addClass('scriptTable');
     }
-    //*******************************
-    //* Parse the CSV and convert it to a HTML table.
-    //* Hide the main content of the page and replace with generated table.
-    //*******************************
-    function ConvertDailyManifest_2_OvernightReport_3(data,result,XHR){
-        const HTML = CSV_2_HTML(data, OVERNIGHT_HEADERS);
-
-        const $table = $(HTML);
-        $table.css({
-            'width':'100%',
-            'border':'1px solid black'
-        });
-        $table.find('thead').css({
-            'border-bottom':'2px solid black'
-        });
-        $table.find('tbody').css({
-
-        });
-        $table.find('th').css({
-            'border':'2px solid black'
-        });
-        $table.find('td').css({
-            //'border-left':'1px solid gray'
-        });
-        $table.find('td:first').css({
-            //'border-left':'none'
-        });
-        $table.find('tr').css({
-            'border-top':'1px solid black'
-        });
-
-        const $page = getMainPageContentAfterHeaders();
-        $page.children().hide(); //Emptying the div breaks things
-        $page.append($table);
-    }
-    //========================================================================================
-
-
-    //========================================================================================
 
     function getContentDiv(){
         return $('#content');
@@ -373,68 +472,116 @@ console.log('Hello world');
         return $primaryActions.eq(0);
     }
 
-    //==================================== AddButtons etc =====================================
-    //*******************************
-    //* Adds an "Overnight Report" button to the daily manifest report.
-    //* The overnight report uses the daily manifest export to generate a simplified table.
-    //*******************************
-    function AddDailyManifestReportButtons(){
-        function onClick(event){
-            event.preventDefault();
-            ConvertDailyManifest_2_OvernightReport();
-            findPageTitle().text('Overnight Report'); //Change page title
-
-            //Find the actions bar where the date selectors exist
-            const $actions = findPrimaryActionsDiv();
-            const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
-            $actions.empty(); // Remove all actions.
-            $actions.append($text); //Add back the text version.
-            $text.show(); //Make sure the text version is shown.
+    function showSpinner(){
+        if($('#my-spinner').length === 0){
+            const $page = $('#page');
+            $page.prepend($MYSPINNER);
         }
-        (function AddDesktopButton(){
-            if($('#overnightButtonDesktop').length != 0){console.log('#overnightButtonDesktop already exists'); return}
-
-            const $newBookingButton = $('#bookingButtonDesktop');
-            if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
-
-            const $cloneButton = $newBookingButton.clone(true, false);
-
-            $cloneButton.attr({'id':'overnightButtonDesktop',
-                               'href':'about:blank'});
-            $cloneButton.css({'margin-right':'10px'});
-            $cloneButton.children('span').text('Overnight Report');
-            $cloneButton.insertBefore($newBookingButton);
-            $cloneButton.on('click',onClick);
-        })();
-        (function AddDesktopButton(){
-            //'bookingButtonMobile
-            if($('#overnightButtonMobile').length != 0){console.log('#overnightButtonMobile already exists'); return}
-
-            const $newBookingButton = $('#bookingButtonMobile');
-            if($newBookingButton.length !== 1){console.log('#bookingButtonMobile not found'); return}
-
-            const $cloneButton = $newBookingButton.clone(true, false);
-
-            $cloneButton.attr({'id':'overnightButtonMobile',
-                               'href':'about:blank',
-                               'title':'Overnight Report'});
-            $cloneButton.css({'margin-right':'10px'});
-
-            const $iconSpan = $cloneButton.find('span[class^="Icon"]');
-            $iconSpan.empty();
-            $iconSpan.html(MOON_ICON);
-            $cloneButton.insertBefore($newBookingButton);
-            $cloneButton.on('click', onClick);
-        })();
+        $MYSPINNER.show();
+    }
+    function hideSpinner(){
+        if($('#my-spinner').length !== 0){
+            $MYSPINNER.hide();
+        }
     }
 
-    //*******************************
-    //* The guest list is very hard to manage, needing to scroll up and down all the time.
-    //* Adds listeners to key buttons to automatically scroll the page up and down to the right places
-    //*******************************
-    function AddScrollHelpersToGuestPages(){
-        const QUEUENAME = 'flashQueue';
+    //========================================================================================
+    //================================ Modification functions ================================
+    //= These are the functions that actually provide the extra features
+    //========================================================================================
 
+    function DoConvertDailyManifest_2_overnight(){
+        //*******************************
+        //* Request the export form then pass the results to step 2.
+        //*******************************
+        function ConvertDailyManifest_2_OvernightReport_1(){
+            $.get({
+                url:'/get/export/',
+                data:window.location.search.substring(1),
+                success:ConvertDailyManifest_2_OvernightReport_2,
+                dataType:'html'
+            });
+        }
+        //*******************************
+        //* Change some the form values and use the form data to request the export CSV.
+        //* Pass the CSV to step 3
+        //*******************************
+        function ConvertDailyManifest_2_OvernightReport_2(data, result, xhr){
+            const $frame = $(data);
+            const $form = $frame.find('#export_form').eq(0);
+
+            $form.find('#rpt_name').val('Overnight Report');
+            $form.find('#format').val('csv');
+            $form.find('#columns').val('*');
+            $form.find('#destination').val('desktop');
+
+            const formData = $form.serialize();
+
+            $.get({
+                url:'/booking/manifest/',
+                data: formData,
+                success:ConvertDailyManifest_2_OvernightReport_3,
+                dataType:'text'
+            });
+
+        }
+        //*******************************
+        //* Parse the CSV and convert it to a HTML table.
+        //* Hide the main content of the page and replace with generated table.
+        //*******************************
+        function ConvertDailyManifest_2_OvernightReport_3(data,result,XHR){
+            const HTML = CSV_2_HTML(data, OVERNIGHT_HEADERS);
+
+            const $table = $(HTML);
+            ApplyGenericTableFormatting($table);
+            $table.attr('id','overnightTable');
+
+
+            findPageTitle().text('Overnight Report'); //Change page title
+
+            //Find the actions bar where the date selectors exist and hide
+            //any nodes that should be hidden when printing.
+            const $actions = findPrimaryActionsDiv();
+            const $printViewHidden = $actions.find('.printViewHidden');
+            $printViewHidden.hide();
+
+            //Display the text version.
+            const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
+            $text.show(); //Make sure the text version is shown.
+
+            const $page = getMainPageContentAfterHeaders();
+            $page.data('previouslyVisable',$page.children(':visible'));
+            $page.data('previouslyVisable').hide(); //Emptying the div breaks things
+            $page.append($table);
+
+            $('#overnightButtonDesktop').text('Close Report');
+
+            hideSpinner();
+        }
+
+        const $table = $('#overnightTable');
+        if($table.length === 0){
+            showSpinner();
+            ConvertDailyManifest_2_OvernightReport_1();
+        }else{
+            $table.remove();
+            const $actions = findPrimaryActionsDiv();
+            const $printViewHidden = $actions.find('.printViewHidden');
+            $printViewHidden.show();
+
+            const $page = getMainPageContentAfterHeaders();
+            $page.data('previouslyVisable').show();
+            $page.data('previouslyVisable',undefined);
+
+            //Display the text version.
+            const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
+            $text.hide(); //Make sure the text version is shown.
+
+            $('#overnightButtonDesktop').text('Overnight Report');
+        }
+    }
+
+    function DoAddScrollHelpers(){
         // An arrow pointing up to the guest data that is made to flash
         // when a guest is clicked on
         let $flashDiv = $('#flashing-arrow-thing');
@@ -466,16 +613,6 @@ console.log('Hello world');
 
         if($flashDiv.length === 0){
             $flashDiv = $(`<div id="flashing-arrow-thing" title="Scroll to guest data">${UP_ARROW}</div>`);
-            $flashDiv.css({
-                position:'fixed',
-                height:'256px',
-                width:'256px',
-                top: '100vh',
-                left: '100vw',
-                transform:'translate(-100%,-100%)',
-                display:'none',
-                cursor:'pointer'
-            });
             $('body').eq(0).append($flashDiv);
             $flashDiv.on('click', stopFlashArrowAndHide);
             $(document).on('scroll', stopFlashArrowAndHide);
@@ -531,9 +668,389 @@ console.log('Hello world');
         }
     }
 
+    function DoMakeSimpleGuestList(){
+        function RequestAllGuestData(){
+            function RequestGuestData(guest_uuid){
+                const jqDeferred = $.Deferred();
+                console.log(`Requesting guest data for uuid '${guest_uuid}'`);
+                ///booking/<booking-code>/guests?action=get-guest&guest_uuid=ccaca774-fe74-4604-b064-ce90e2f94bb1
+                setTimeout(()=>{
+                    $.get({
+                        url:'guests',
+                        data:{guest_uuid:guest_uuid,action:'get-guest'},
+                        dataType:'json',
+                        success:function(data,status,xhr){jqDeferred.resolve(data);},
+                        complete:function(xhr, status){console.log(status);}
+                    });},10 * Math.random());
 
-    //====================================== AddButtons ======================================
+                return jqDeferred.promise();
+            }
 
+            const requests = [];
+
+            const $guestTable = $('#guest-table');
+            const $rows = $guestTable.find('tr[id^="guest_"]');
+
+            for(const row of $rows){
+                const $row = $(row);
+                const guest_uuid = $row.data('guest_uuid');
+
+                const request = RequestGuestData(guest_uuid);
+                //request.then(function(data){console.log(data);})
+                requests.push(request);
+            }
+
+            return requests;
+        }
+
+        function GenerateSimpleGuestList(...args){
+            function GenerateSimpleGuestListTable(...args){
+                let responses;
+                if(Array.isArray(args[0])){
+                    responses = args[0];
+                }else{
+                    responses = args;
+                }
+
+                console.log('Dump results');
+                console.log(responses);
+
+                console.log('Process results');
+                //return;
+
+                const assignedActivities = [];
+
+                let ts_start_min = -1;
+                let ts_end_max = -1;
+
+                // Find any assigned activites, as the activites
+                // list is the same for all guests we'll just use
+                // the first one.
+                const list = responses[0].activities.list
+                const format1 = /^\s*[a-z]+\s[a-z]+\s\d+\s\d+\s-\s[a-z]+\s[a-z]+\s\d+\s\d+\s*$/i;
+                const format2 = /^\s*[a-z]+\s[a-z]+\s\d+,?\s\d+\s*$/i;
+                for(const line_id in list){
+                    const activity = list[line_id];
+                    if(activity.assigned > 0){
+                        const date_desc = activity.date_desc
+                        let date_parts = [];
+                        let ts_start;
+                        let ts_end;
+
+                        switch(true){
+                            case (format1.test(date_desc)):
+                                date_parts = date_desc.split(' - ');
+                                ts_start = Date.parse(date_parts[0]);
+                                ts_end = Date.parse(date_parts[1]);
+                                break;
+                            case (format2.test(date_desc)):
+                                ts_start = Date.parse(date_desc);
+                                ts_end = Date.parse(date_desc);
+                                break;
+                            default:
+                                throw 'Invalid date format';
+                                break;
+                        }
+
+                        activity.ts_start = ts_start;
+                        activity.ts_end = ts_end;
+                        activity.is_all_day = (ts_start === ts_end);
+
+                        assignedActivities[line_id] = activity
+
+                        if(ts_start_min === -1){ts_start_min = ts_start;}
+                        if(ts_start < ts_start_min){ts_start_min = ts_start;}
+                        if(ts_end > ts_end_max){ts_end_max = ts_end;}
+                    }
+                }
+
+                //=====================================
+
+                const dayslist = [];
+                const headerRow = ['Guest Name']
+                for(var d = ts_start_min; d <= ts_end_max; d+= 86400000){
+                    dayslist[d] = [];
+                    headerRow.push((new Date(d)).toLocaleString('en-gb',{day:'2-digit'}));
+                    for(const line_id in assignedActivities){
+                        const activity = assignedActivities[line_id];
+                        if((d >= activity.ts_start) && (d <= activity.ts_end)){
+                            dayslist[d].push(activity.line_id);
+                        }
+                    }
+                }
+                headerRow.push('Dietaries');
+                headerRow.push('Accesability');
+
+                //======================================
+
+                const table = [headerRow];
+                for(const guestentry of responses){
+                    const guest = guestentry.guest;
+                    const guestActivities = guest.activities;
+
+                    const row = [];
+                    const subRow = [];
+
+                    row.push(`${guest.fields.guest_first_name} ${guest.fields.guest_last_name}`);
+
+                    for(const guestActivity in guestActivities){
+                        const activityDetail = assignedActivities[guestActivity];
+                        if(!!activityDetail){
+                            let time = '';
+                            if(!!activityDetail.time_desc){
+                                time = `\r\n(${activityDetail.time_desc})`;
+                            }
+                            subRow[guestActivity] = ['\t' + activityDetail.name + time];
+                        }else{
+                            subRow[guestActivity] = ['\tLine item: ' + guestActivity];
+                        }
+                    }
+
+                    for(const ts in dayslist){
+                        //const d = dayslist[ts];
+                        row.push('-');
+                        for(const guestActivity in guestActivities){
+                            const activityDetail = assignedActivities[guestActivity];
+                            if(!!activityDetail){
+                                if(ts == activityDetail.ts_start){
+                                    if(activityDetail.is_all_day){
+                                        subRow[guestActivity].push('&#x25FC;');
+                                    }else{
+                                        subRow[guestActivity].push('&#x25EA;');
+                                    }
+                                }else if(ts == activityDetail.ts_end){
+                                    subRow[guestActivity].push('&#x2B15;');
+                                }else if((ts >= activityDetail.ts_start) && (ts <= activityDetail.ts_end)){
+                                    subRow[guestActivity].push('&#x25FC;');
+                                }else{
+                                    subRow[guestActivity].push('&nbsp;');
+                                }
+                            }else{
+                                subRow[guestActivity].push('?');
+                            }
+                        }
+                    }
+
+                    row.push(guest.fields.dietary_requirements);
+                    row.push(guest.fields.accessibility_requirements);
+
+                    table.push(row);
+                    for(const line_id in subRow){
+                        subRow[line_id].push('');
+                        subRow[line_id].push('');
+                        table.push(subRow[line_id]);
+                    }
+
+
+                } //Next guest entry
+
+                console.log('processed');
+                return table;
+            }
+
+            function ConvertSimpleGuestTableToHtml(table){
+                let html = '<table><thead><tr>';
+
+                for(const cell of table[0]){
+                    html += `<th>${cell}</th>`;
+                }
+
+                html += '</tr></thead><tbody>';
+
+                for(var i = 1; i < table.length; i++){
+                    const row = table[i];
+
+                    html += '<tr>';
+                    for(const cell of row){
+                        if(cell !== undefined){
+                            if(cell.startsWith('\t')){
+                                html += `<td class="subRowLabel">${cell.replace(/\r\n|\n\r|\r|\n/g,'<br>')}</td>`;
+                            }else{
+                                html += `<td>${cell}</td>`;
+                            }
+                        }else{
+                            html += `<td>&nbsp;</td>`;
+                        }
+                    }
+                    html += '</tr>';
+                }
+
+                html += '</tbody></table>';
+
+                console.log('converted');
+                return html;
+            }
+
+            //Generate the table and html from the guest infos
+            const table = GenerateSimpleGuestListTable(args);
+            const html = ConvertSimpleGuestTableToHtml(table);
+
+            //Parse table into jquery
+            const $table = $(html);
+
+            //Format table
+            ApplyGenericTableFormatting($table);
+            $table.addClass('guests');
+
+
+            const $main = $('#staffside-guest-container');
+            function decodeHtml(html) {
+                const txt = document.createElement("textarea");
+                txt.innerHTML = html;
+                return txt.value;
+            }
+
+            //Convert the table into a CSV file and decode the htmlentites into text.
+            //We also create a raw utf-8 byte array and add the UTF-8 BOM as excel
+            //does not correctly decode the weird characters we use without it.
+            const csvStr = decodeHtml(TABLE_2_QUOTEDCSV(table));
+            const binaryAr = (new TextEncoder('utf-8')).encode(csvStr);
+            const blobArray = new Uint8Array(binaryAr.length + 3);
+            blobArray[0] = 239;
+            blobArray[1] = 187;
+            blobArray[2] = 191;
+            let i = 3;
+            for(const val of binaryAr){
+                blobArray[i] = val;
+                i+=1
+            }
+
+            //Create a blob...
+            const blob = new Blob([blobArray],{type:'text/csv;charset=utf8'});
+            const dataUrl = URL.createObjectURL(blob);
+
+            //Create buttons
+            const $downloadAnchor = $('<a class="btn btn-default scriptGuestBtn" download="simple guest list.csv">Download</a>');
+            const $closeAnchor = $('<a class="btn btn-default scriptGuestBtn">Close</a>');
+            const $makePrintable = $('<a class="btn btn-default scriptGuestBtn">Open full page</a>');
+
+            //Use GM functions to download the CSV BLOB
+            $downloadAnchor.on('click',function(event){
+                event.preventDefault();
+                console.log("Calling download");
+                GM_download({url:dataUrl,
+                             name:'simple guest list.csv',
+                             saveAs:true,
+                             onerror:(args)=>console.log(args),
+                             onprogress:(args)=>console.log(args),
+                             onload:(args)=>console.log(args)
+                            });
+
+            });
+
+            //The close button deletes the added nodes and un-hides the original node
+            $closeAnchor.on('click',(event)=>{
+                event.preventDefault();
+                $downloadAnchor.remove();
+                $table.remove();
+                $closeAnchor.remove();
+                $makePrintable.remove();
+                $main.show();
+                $('#makeGuestListEasy').show();
+            });
+
+            $makePrintable.on('click',(event)=>{
+               event.preventDefault();
+                const body = $('body');
+                body.children().hide();
+                body.append($table);
+                $table.show();
+            });
+            //Modify the DOM
+            $main.hide();
+            $main.after($table);
+
+            $table.after($downloadAnchor);
+            $downloadAnchor.after($closeAnchor);
+            $closeAnchor.after($makePrintable);
+
+            $('#makeGuestListEasy').hide();
+
+            hideSpinner();
+        }
+
+        showSpinner();
+        const requests = RequestAllGuestData();
+        const whenAllDataHasArrived = $.when(...requests);
+        whenAllDataHasArrived.then(GenerateSimpleGuestList);
+    }
+
+    ///set/report/
+
+    //==================================== AddButtons etc =====================================
+    //*******************************
+    //* Adds an "Overnight Report" button to the daily manifest report.
+    //* The overnight report uses the daily manifest export to generate a simplified table.
+    //*******************************
+    function AddDailyManifestReportButtons(){
+        function onClick(event){
+            event.preventDefault();
+            DoConvertDailyManifest_2_overnight();
+        }
+        function configureCloneButton($cloneButton, id){
+            $cloneButton.attr({'id':id,
+                               'title':'Overnight Report'});
+            $cloneButton.removeAttr('href');
+            $cloneButton.css({'margin-right':'10px'});
+
+            $cloneButton.on('click',onClick);
+        }
+        (function AddDesktopButton(){
+            if($('#overnightButtonDesktop').length != 0){console.log('#overnightButtonDesktop already exists'); return}
+
+            const $newBookingButton = $('#bookingButtonDesktop');
+            if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
+
+            const $cloneButton = $newBookingButton.clone(true, false);
+
+            configureCloneButton($cloneButton,'overnightButtonDesktop');
+
+            $cloneButton.children('span').text('Overnight Report');
+            $cloneButton.insertBefore($newBookingButton);
+            
+        })();
+        (function AddDesktopButton(){
+            //'bookingButtonMobile
+            if($('#overnightButtonMobile').length != 0){console.log('#overnightButtonMobile already exists'); return}
+
+            const $newBookingButton = $('#bookingButtonMobile');
+            if($newBookingButton.length !== 1){console.log('#bookingButtonMobile not found'); return}
+
+            const $cloneButton = $newBookingButton.clone(true, false);
+
+            configureCloneButton($cloneButton,'overnightButtonMobile');
+
+            const $iconSpan = $cloneButton.find('span[class^="Icon"]');
+            $iconSpan.empty();
+            $iconSpan.html(MOON_ICON);
+
+            $cloneButton.insertBefore($newBookingButton);
+        })();
+    }
+
+    //*******************************
+    //* The guest list is very hard to manage, needing to scroll up and down all the time.
+    //* Adds listeners to key buttons to automatically scroll the page up and down to the right places
+    //*******************************
+    function AddScrollHelpersToGuestPages(){
+        DoAddScrollHelpers()
+    }
+
+    //*******************************
+    //* Adds a sidebar entry to show the guest details for a booking in a table layout
+    //*******************************
+    function AddSimpleGuestlistButton(){
+        const $sidebar = $('#sidebar');
+        if($sidebar.children('#makeGuestListEasy').length !== 0){console.log('#makeGuestListEasy already exists'); return;}
+
+        const $btn = $('<a id="makeGuestListEasy" class="btn btn-default ico wopen"><i class="fa fa-columns"></i><b>Simple Guest List</b></a>');
+        $sidebar.append($btn);
+        $btn.on('click',function(event){event.preventDefault(); DoMakeSimpleGuestList();});
+    }
+
+    //*******************************
+    //* This function is called at page load and on page changes to add any extra buttons to the layout
+    //*******************************
     function DoMods(){
         console.log(window.location);
         switch(true){
@@ -547,6 +1064,9 @@ console.log('Hello world');
             case /booking\/[A-Z]{4}-\d{6}\/guests/.test(window.location):
                 console.log('AddScrollHelpersToGuestPages');
                 AddScrollHelpersToGuestPages();
+
+                console.log('AddGuestlistButton');
+                AddSimpleGuestlistButton();
                 break;
         }
 
