@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Checkfront Overnight Report Helper Script
+// @name         Checkfront Overnight Report Helper Script DEV VERSION
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-07-02T14:11
+// @version      DEV_2025-06-24T12:23
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -45,6 +45,30 @@ console.log('Hello world');
 <svg width="120" height="120" stroke="#000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g><circle cx="12" cy="12" r="9.5" fill="none" stroke-width="3" stroke-linecap="round"><animate attributeName="stroke-dasharray" dur="1.5s" calcMode="spline" values="0 150;42 150;42 150;42 150" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="1.5s" calcMode="spline" values="0;-16;-59;-59" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/></circle><animateTransform attributeName="transform" type="rotate" dur="2s" values="0 12 12;360 12 12" repeatCount="indefinite"/></g></svg>
 `;
     const $MYSPINNER = $('<div id="my-spinner"><div>' + MY_SPINNER + '</div></div>');
+
+    const DEFAULT_COLUMN_OPTS = [
+        {label:'Accomodation',
+         'daily-manifest-bookings':[{"id":"customer.email"},{"id":"startTime"},{"id":"endTime"},{"id":"checkinCheckout"},{"id":"note"},{"id":"fields.comments_or_additional_request"},{"id":"fields.group_name_1"},{"id":"statusId"},{"id":"bookingCode"},{"id":"parameters.twin"},{"id":"parameters.double"}],
+         'daily-manifest-guests':[{"id":"checkIn"},{"id":"firstName"},{"id":"lastName"},{"id":"fields.dietary_requirements"},{"id":"fields.accessibility_requirements"}],
+         categories:[3,10,26,33]
+        },
+        {label:'Catering',
+         'daily-manifest-bookings':[{"id":"startTime"},{"id":"endTime"},{"id":"parameters.attendee"},{"id":"statusId"},{"id":"note"},{"id":"customer.email"},{"id":"bookingCode"},{"id":"fields.comments_or_additional_request"}],
+         'daily-manifest-guests':[{"id":"firstName"},{"id":"lastName"},{"id":"fields.dietary_requirements"}],
+         categories:[34]
+        }
+    ];
+
+    //Unless there is an existing guest we can not retrive the guest form - staticly define the inputs we want to be able to specify in the import template
+    const GUEST_IMPORT_FIELDS = [{header:'Guest first name',formId:'guest_first_name'}, //Inbuilt - Required
+                                 {header:'Guest last name',formId:'guest_last_name'},   //Inbuilt - Required
+                                 {header:'Dietary requirements',formId:'dietary_requirements'},
+                                 {header:'Accessibility Requirements',formId:'accessibility_requirements'}];
+
+    //Attach the guest to the specified param in order of priority.
+    //Params can be applied to particular item IDs to give them priority for those items.
+    //Specifiying no item ids to match against the param will be checked against all items.
+    const GUEST_IMPORT_PARAMS = [{items:[],guest_type:'guestformtest'},{items:[],guest_type:'guest'}];
 
 
     ( //BASED ON: https://stackoverflow.com/questions/4232557/jquery-css-write-into-the-style-tag
@@ -189,6 +213,19 @@ a.scriptGuestBtn{
     display:none;
     cursor:pointer;
 }
+
+#sidebar-wrapper .btn.guestTableBtn{
+    margin-top:21px;
+    margin-bottom:2px;
+}
+#sidebar-wrapper .btn.templateBtn{
+    margin-top:2px;
+    margin-bottom:2px;
+}
+#sidebar-wrapper .btn.importBtn{
+    margin-top:2px;
+}
+
     `;
 
     $.cssStyleSheet.createSheet(MY_CSS);
@@ -292,8 +329,87 @@ a.scriptGuestBtn{
         }
         return lines;
     }
+
+    //PREFER THIS ONE IT HANDLES QUOTED AND UNQUOTED CSVS
+    //AND IT DOESN'T NEED TO SPLIT THE LINES IN A SEPERATE STEP!
+    function BADLY_ITERATE_GENERIC_CSV(data){
+        const rows = [];
+        let row = [];
+
+        const l = data.length;
+        let i = 0;
+        let currentPart = '';
+        let isInQuotedPart = false;
+        let havePushedLastPart = false;
+        let lastChar;
+
+        //let previousChar = undefined;
+        while(i < l){
+            const currentChar = data.charAt(i);
+            const nextChar = data.charAt(i+1);
+            havePushedLastPart = false;
+
+            switch(currentChar){
+                case '"':
+                    switch(true){
+                        //If we've encountered a double quote and we are not already in a quoted section, enter the quoted section
+                        case (!isInQuotedPart):
+                            isInQuotedPart = true;
+                            break;
+
+                        //If the immediatly next charcter is a double quote then the quote is escaped
+                        case (nextChar == '"'):
+                            currentPart += currentChar;
+                            i++; //Skip the escaped double quote
+                            break;
+
+                        //In any other case exit the quoted section
+                        default:
+                            isInQuotedPart = false;
+                    }
+                    break;
+                case ',':
+                    if(isInQuotedPart){
+                        currentPart += currentChar
+                    }else{
+                        row.push(currentPart);
+                        currentPart = '';
+                    }
+                    break;
+                case '\r':
+                case '\n':
+                    if(isInQuotedPart){
+                        currentPart += currentChar;
+                    }else{
+                        row.push(currentPart);
+                        havePushedLastPart = true;
+
+                        rows.push(row);
+                        row = [];
+                        currentPart = '';
+                        while(/\r|\n/.test(data.charAt(i))){ //Skip all new line characters (including the current one)
+                            i++
+                        }
+                        i--; //Rewind one character
+                    }
+                    break;
+                default:
+                    currentPart += currentChar;
+            }
+            i++;
+        }//Next char
+        if(row.length > 0){
+            if(!havePushedLastPart){row.push(currentPart);}
+
+            rows.push(row);
+            row = [];
+        }
+
+        return rows;
+    }
+
     function BADLY_PARSE_CSV(data){
-        const lines = BADLY_ITERATE_QUOTED_CSV(data);
+        const lines = BADLY_ITERATE_GENERIC_CSV(data);
         const headers = lines[0];
         const output = [];
 
@@ -314,6 +430,8 @@ a.scriptGuestBtn{
         }
         return output;
     }
+
+
     //================================= CSV converting =======================================
 
     function CSV_2_TABLE(parsed, html_headers){
@@ -420,20 +538,37 @@ a.scriptGuestBtn{
 
     function TABLE_2_QUOTEDCSV(table){
         let csv = "";
-
         for(const row of table){
             for(const cell of row){
-                if(cell === undefined){
-                    csv += '""';
-                }else{
+                if((cell instanceof String) || (typeof cell === 'string')){
                     csv += `"${cell.replace('"','""')}",`;
+                }else if(cell === undefined){
+                    csv += '"",';
+                }else{
+                    csv += `"${cell}",`;
                 }
             }
             csv = csv.slice(0,-1) + '\r\n';
         }
-
         return csv.slice(0,-2);
     }
+    /*function TABLE_2_CSV(table){
+        let csv = "";
+        for(const row of table){
+            for(const cell of row){
+                if((cell instanceof String) || (typeof cell === 'string')){
+
+                    csv += `"${cell.replace('"','""')}",`;
+                }else if(cell === undefined){
+                    csv += '"",';
+                }else{
+                    csv += `"${cell}",`;
+                }
+            }
+            csv = csv.slice(0,-1) + '\r\n';
+        }
+        return csv.slice(0,-2);
+    }*/
 
     //================================ Helper functions ======================================
     function ApplyGenericTableFormatting($table){
@@ -472,6 +607,15 @@ a.scriptGuestBtn{
         return $primaryActions.eq(0);
     }
 
+    function getBookingCode(){
+        const bookingCode = /([A-Z]{4}-\d{6})/;
+        const m = bookingCode.exec(window.location);
+        if(m !== null){return m[1];}
+
+
+        return null;
+    }
+
     function showSpinner(){
         if($('#my-spinner').length === 0){
             const $page = $('#page');
@@ -482,6 +626,50 @@ a.scriptGuestBtn{
     function hideSpinner(){
         if($('#my-spinner').length !== 0){
             $MYSPINNER.hide();
+        }
+    }
+
+    function stringToUtf8Blob(str,mimeSubType){
+        //Encode the string into a UTF8 byte array
+        const binaryAr = (new TextEncoder('utf-8')).encode(str);
+        const blobArray = new Uint8Array(binaryAr.length + 3); // Create a new array that will also have the BOM
+
+        //Dis is da BOM
+        blobArray[0] = 239;
+        blobArray[1] = 187;
+        blobArray[2] = 191;
+
+        //Copy the string array into our BOM'd array
+        let i = 3;
+        for(const val of binaryAr){
+            blobArray[i] = val;
+            i+=1
+        }
+
+        //Create and return the blob
+        return new Blob([blobArray],{type:`text/${mimeSubType??'plain'};charset=utf8`});
+    }
+
+    function hashCode(str) {
+        return str.split('').reduce((prevHash, currVal) =>
+                                    (((prevHash << 5) - prevHash) + currVal.charCodeAt(0))|0, 0);
+    }
+
+    function getGuestListHashCodes(){
+        const list = $('#item-list').children('[id^="item_list_"]');
+        let str_ids = '';
+        let str_avl = '';
+        for(const itm of list){
+            const $itm = $(itm);
+            str_ids += `${$itm.attr('id').replace('item_list_','')}`;
+
+            const $itemassignments = $itm.find('.item-assignments b');
+            str_avl += $itemassignments.eq(0).text() + $itemassignments.eq(1).text();
+        }
+
+        return {
+            hash1:hashCode(str_ids),
+            hash2:hashCode(str_avl)
         }
     }
 
@@ -578,6 +766,67 @@ a.scriptGuestBtn{
             $text.hide(); //Make sure the text version is shown.
 
             $('#overnightButtonDesktop').text('Overnight Report');
+        }
+    }
+
+    function DoSetColumnsFromPresets(index){
+        const obj = DEFAULT_COLUMN_OPTS[index];
+        if(!(!!obj)){return;}
+
+        const requests = [];
+
+        function submitReportOpts(report_id, value){
+            const formData = new FormData();
+            formData.append('report_id', report_id);
+            formData.append('columns', JSON.stringify(value));
+
+            const $request = $.Deferred();
+            requests.push($request);
+
+            $.post({
+                url:'/set/report/',
+                data:formData,
+                dataType:'json',
+                contentType:false,
+                processData:false,
+                success:()=>{$request.resolve()},
+                error:(...args)=>{console.log(args);}
+            });
+
+            return $request;
+        }
+
+        for(const k in obj){
+            switch(k){
+                case 'label':
+                case 'categories':
+                    break;
+                default:
+                    requests.push(submitReportOpts(k,obj[k]));
+            }
+        }
+
+
+        const WhenAllRequestsAreDone = $.when(...requests);
+        if(!!obj.categories){
+            const params = new URLSearchParams(window.location.search);
+            const newParams = new URLSearchParams();
+            for(const [k,v] of params){
+                switch(k){
+                        //Do not pass through any category or item selections in this case
+                    case 'category_id[]':
+                    case 'item_id[]':
+                        break;
+                    default:
+                        newParams.append(k, v);
+                }
+            }
+            for(const cat of obj.categories){
+                newParams.append('category_id[]',cat);
+            }
+             WhenAllRequestsAreDone.then(()=>{window.location.search = newParams;});
+        }else{
+             WhenAllRequestsAreDone.then(()=>{window.location.reload();});
         }
     }
 
@@ -901,22 +1150,10 @@ a.scriptGuestBtn{
             }
 
             //Convert the table into a CSV file and decode the htmlentites into text.
-            //We also create a raw utf-8 byte array and add the UTF-8 BOM as excel
-            //does not correctly decode the weird characters we use without it.
             const csvStr = decodeHtml(TABLE_2_QUOTEDCSV(table));
-            const binaryAr = (new TextEncoder('utf-8')).encode(csvStr);
-            const blobArray = new Uint8Array(binaryAr.length + 3);
-            blobArray[0] = 239;
-            blobArray[1] = 187;
-            blobArray[2] = 191;
-            let i = 3;
-            for(const val of binaryAr){
-                blobArray[i] = val;
-                i+=1
-            }
 
-            //Create a blob...
-            const blob = new Blob([blobArray],{type:'text/csv;charset=utf8'});
+            //Creeate a blob and an object URL
+            const blob = stringToUtf8Blob(csvStr,'csv');
             const dataUrl = URL.createObjectURL(blob);
 
             //Create buttons
@@ -975,7 +1212,375 @@ a.scriptGuestBtn{
         whenAllDataHasArrived.then(GenerateSimpleGuestList);
     }
 
-    ///set/report/
+
+    function DoGenerateGuestImportTemplate(){
+        const $guestItemList = $('#guest-item-list').children('div.guest-item');
+        const $invoiceItemList = $('#item-list').children('div.item-slot');
+
+        const table = [];
+        const headers = [];
+        const emptyFormFields = [];
+
+        headers.push('Item name','Item date/time')
+        for(const h of GUEST_IMPORT_FIELDS){
+            headers.push(`${h.header} (${h.formId})`);
+            emptyFormFields.push('');
+        }
+
+
+        //Map all parameters into columns and store a map of the index of those headers...
+        const paramIndexMap = new Map();
+        let paramCount = 0;
+        for(const invoiceItem of $invoiceItemList){
+            const $invoiceItem = $(invoiceItem);
+            const lineId = `${$invoiceItem.attr('id').replace('item_list_','')}`;
+            const $guestItem = $guestItemList.parent().children(`[data-line-id="${lineId}"]`);
+
+            const $params = $guestItem.find('.guest-item-params').find('input[value]');
+
+            for(const $param of $params){
+                const guest_type = $params.val();
+                const parentLabel = $params.parent().children('label').text();
+                const headerLabel = `${parentLabel} [${guest_type}]`;
+                if(!headers.includes(headerLabel)){
+                    headers.push(headerLabel);
+                    paramIndexMap.set(guest_type,paramCount);
+                    paramCount += 1
+                }
+            }
+        }
+        const paramOptIns = [...Array(paramCount)];
+
+
+        headers.push('INTERNAL [line-id]','INTERNAL [item-id]','INTERNAL [sku]')
+        table.push(headers);
+
+
+
+        for(const invoiceItem of $invoiceItemList){
+            paramOptIns.fill('',0, paramCount);
+
+            const $invoiceItem = $(invoiceItem);
+            const $itemassignments = $invoiceItem.find('.item-assignments b');
+            const slotsUsed = $itemassignments.eq(0).text();
+            const slotsTtl = $itemassignments.eq(1).text();
+            const slotsAv = (slotsTtl - slotsUsed);
+            const lineId = `${$invoiceItem.attr('id').replace('item_list_','')}`;
+            const sku = $invoiceItem.data('sku');
+            const itemName = $invoiceItem.find('.item-name').text();
+            const datestr = $invoiceItem.find('.item-date').text();
+            const timestr = $invoiceItem.find('.item-time').text();
+            let datetimestr;
+            if(timestr != ''){
+                datetimestr = `${datestr} ${timestr}`;
+            }else{
+                datetimestr = datestr;
+            }
+
+            const $guestItem = $guestItemList.parent().children(`[data-line-id="${lineId}"]`);
+            const itemId = $guestItem.data('item-id');
+
+            const $params = $guestItem.find('.guest-item-params').find('input[value]');
+            let paramOptInIndex = -1;
+            if($params.count = 1){
+                paramOptInIndex = paramIndexMap.get($params.val());
+            }else{
+                let firstGuestType = undefined;
+                let foundGuestType = undefined;
+                let secondFoundGuestType = undefined;
+
+                findPreferedParam: {
+                    for(const prefImportParam of GUEST_IMPORT_PARAMS){
+                        for(const $param of $params){
+                            const guest_type = $params.val();
+                            if(firstGuestType === undefined){firstGuestType = guest_type;}
+
+                            if(guest_type === prefImportParam.guest_type){
+                                 if(prefImportParam.items.includes(itemId)){ // If the prefered item specifies this item then we have found the prefered param
+                                    foundGuestType = guest_type;
+                                    break findPreferedParam;
+                                }else if(prefImportParam.items.length === 0){ // If there are no specific items for this param then it can match any item
+                                    if(secondFoundGuestType === undefined){ //If we haven't already matched a prefered param
+                                        secondFoundGuestType = guest_type;
+                                    }
+                                }
+                            }//If the guest types match
+                        }//Next item param
+                    }//Next preferred param
+                }// End find prefered param block;
+                paramOptInIndex = paramIndexMap.get(foundGuestType??(secondFoundGuestType??firstGuestType));
+            }
+            paramOptIns[paramOptInIndex] = 'Y';
+
+            for(var i = 1; i <= slotsAv; i++){
+                const row = [];
+                row.push(itemName);
+                row.push(datestr);
+
+                row.push(...emptyFormFields);
+
+                row.push(...paramOptIns);
+
+                row.push(`'${lineId}'`);
+                row.push(itemId);
+                row.push(sku);
+                
+                table.push(row);
+            }
+        }
+
+
+        paramOptIns.fill('',0, paramCount);
+        const verificationRow = [];
+        const hashes = getGuestListHashCodes();
+        verificationRow.push(':::DO NOT EDIT THIS ROW - VERIFICTION ROW:::', getBookingCode());
+        verificationRow.push(...emptyFormFields);
+        verificationRow.push(...paramOptIns);
+        verificationRow.push(hashes.hash1, hashes.hash2);
+        verificationRow.push('');
+        table.push(verificationRow);
+
+
+        const csvStr = TABLE_2_QUOTEDCSV(table);
+        const blob = stringToUtf8Blob(csvStr,'csv');
+        const dataUrl = URL.createObjectURL(blob);
+
+        GM_download({url:dataUrl,
+                     name:`Guest import template for ${getBookingCode()}.csv`,
+                     saveAs:true,
+                     onerror:(args)=>console.log(args),
+                     onprogress:(args)=>console.log(args),
+                     onload:(args)=>console.log(args)
+                    });
+    }
+
+    function DoGuestImportCSV(file){
+        if(!file){return;}
+
+        if(!file.type.startsWith('text/csv')){
+            if(!file.name.toLowerCase().endsWith('.csv')){return;}
+        }
+
+        function StartMakeGuests(guests){
+            function MakeGuest(argData){
+                function SubmitGuest(json,status,jqXHR,otherArgs){
+                    const guest = otherArgs.guests[otherArgs.index];
+
+
+                    if(json.status == 'ERROR'){
+                        otherArgs.whenDone.resolve({status:'ERROR',
+                                                    msg:`${json.msg}\r\n\tAdditional Info:\r\n\tGuest index: ${otherArgs.index}\r\n\tGuest Name: ${guest.first_name} ${guest.last_name}`
+                                                   });
+                        return;
+                    }
+                    const formValues = {};
+                    const guest_form = json.guest.form;
+
+                    for(const field_id in guest_form){
+                        formValues[guest_form[field_id].field_id] = guest.form_fields[field_id]??'';
+                    }
+
+                    const data = {
+                        action:'update-guest',
+                        guest_uuid:json.guest_uuid,
+                        form_key:otherArgs.form_key,
+                        data:{fields:formValues}
+                    }
+
+                    $.post({
+                        url:'',
+                        data:data,
+                        dataType:'json',
+                        success:()=>{otherArgs.index++; MakeGuest(otherArgs);},
+                        error:(jqXHRe,statusE,errE)=>{otherArgs.whenDone.resolve({status:'ERROR',msg:statusE})}
+                    })
+                } //End Submit guest
+
+                const guest = argData.guests[argData.index];
+                if(!(!!guest)){
+                    console.log('DONE');
+                    argData.whenDone.resolve({status:'OK', msg:'Complete'});
+                    return;
+                }
+
+                const data = {
+                    action:'add-guest',
+                    form_key:argData.form_key,
+                    data:{activities:guest.items},
+                }
+
+                //POST /booking/<booking-code/guests (The current URL)
+                $.post({
+                    url:'',
+                    data:data,
+                    dataType:'json',
+                    success:(a,b,c)=>SubmitGuest(a,b,c,argData),
+                    error:(jqXHRe,statusE,errE)=>{argData.whenDone.resolve({status:'ERROR',msg:statusE})}
+                })
+            } //End make guest
+
+            const $whenDone = $.Deferred();
+
+            const form_key = $('#form_key').val();
+            MakeGuest({guests:guests,
+                       index:0,
+                       whenDone:$whenDone,
+                       form_key:form_key
+                      });
+
+            return $whenDone;
+        }
+
+        function DoCsvImport(loadedReader){
+            function DoVerification(vRow){
+                const bookingCode = vRow[1];
+                const hash1 = vRow[vRow.length - 3];
+                const hash2 = vRow[vRow.length - 2];
+                const hash3 = vRow[vRow.length - 1];
+
+                const hashes = getGuestListHashCodes()
+                const actualBookingCode = getBookingCode();
+
+
+                const a = (bookingCode == actualBookingCode);
+                const b = (hash1 == hashes.hash1);
+                const c = (hash2 == hashes.hash2);
+                console.log({a:a,b:b,c:c});
+                return a && b && c;
+            }
+
+            const table = BADLY_PARSE_CSV(loadedReader.result);
+            const byGuest = [];
+            const usedRows = [];
+            const headers = table[0];
+
+            const field_header = /.+?\((.+?)\)/;
+            const param_header = /.+?\[(.+?)\]/;
+
+            const fieldMap = new Map();
+            const paramMap = new Map();
+
+            let verificationRow;
+
+            for(var k = 0; k < headers.length; k++){
+                const header = headers[k];
+                switch(true){
+                    case (field_header.test(header)):
+                        var M = header.match(field_header);
+                        var MM = M[1];
+                        fieldMap.set(MM,k);
+                        break;
+                    case (param_header.test(header)):
+                        var N = header.match(param_header);
+                        var NN = N[1];
+                        paramMap.set(NN, k);
+                        break;
+                }
+            }
+
+            for(var i = 1; i < table.length; i++){
+                if(!usedRows.includes(i)){
+                    const row = table[i];
+
+                    if(row[0].toUpperCase() == ':::DO NOT EDIT THIS ROW - VERIFICTION ROW:::'){
+                        verificationRow = row;
+                        usedRows.push(i);
+                        continue;
+                    }
+
+                    let fn = row[fieldMap.get('guest_first_name')];
+                    let ln = row[fieldMap.get('guest_last_name')];
+
+                    if((fn == '') || (ln == '')){
+                        usedRows.push(i);
+                        continue;
+                    }
+
+                    const obj = {first_name:fn, last_name:ln, rows:[], form_fields:{}, items:[]};
+
+                    fn = fn.toLowerCase();
+                    ln = ln.toLowerCase();
+
+                    for(var j = i; j < table.length; j++){
+                        if(!usedRows.includes(j)){
+                            const searchRow = table[j];
+                            if((searchRow[fieldMap.get('guest_first_name')].toLowerCase() == fn) &&
+                               (searchRow[fieldMap.get('guest_last_name')].toLowerCase() == ln)){
+                                let line_id;
+                                let item_id;
+                                let sku;
+                                let guestType;
+
+                                for(const [param,value] of paramMap){
+                                    switch(param){
+                                        case 'line-id':
+                                            line_id = `${searchRow[value]}`;
+                                            line_id = line_id.replace(/[^\d.]/g,'');
+                                            break;
+                                        case 'item-id':
+                                            item_id = `${searchRow[value]}`;;
+                                            item_id = item_id.replace(/[^\d]/g,'');
+                                            break;
+                                        case 'sku':
+                                            sku = searchRow[value];
+                                            break;
+                                        default:
+                                            if(searchRow[value].toLowerCase().startsWith('y')){
+                                                guestType = param;
+                                            }
+                                            break;
+                                    }
+                                }
+
+                                obj.rows.push(searchRow);
+                                obj.items.push({line_id:line_id,
+                                                item_id:item_id,
+                                                guest_type:guestType
+                                               });
+                                //sku:sku,
+
+                                for(const [key,value] of fieldMap){
+                                    if(!(!!obj.form_fields[key])){
+                                        obj.form_fields[key] = searchRow[value];
+                                    }
+                                }
+
+                                usedRows.push(j);
+                            }//If names match
+                        }//If not already used row
+                    } //Next search row...
+
+                    byGuest.push(obj);
+                }//If not skip row
+            }//Next row
+
+            if(DoVerification(verificationRow) === false){
+                const D = $.Deferred();
+                D.resolve({status:'ERROR',msg:'Invoice verficiation failed.\r\nAn import template is only valid for the specific booking and invoice it was generated for.\r\nAny changes to the invoice or existing guest assignments will invalidate the template.'});
+                return D
+            }else{
+                return StartMakeGuests(byGuest);
+            }
+
+        }
+
+        function ImportComplete(arg){
+            switch(arg.status){
+                case 'OK':
+                    break;
+                default:
+                    alert(`Status: ${arg.status}\r\n${arg.msg}\r\n\r\nThe page will be reloaded`);
+            }
+            window.location.reload();
+        }
+
+        const reader = new FileReader();
+        reader.onload = ()=>{DoCsvImport(reader).then(ImportComplete)}
+        reader.onerror = (...args)=>{console.log(args);}
+
+        reader.readAsText(file);
+    }
+
 
     //==================================== AddButtons etc =====================================
     //*******************************
@@ -1043,9 +1648,54 @@ a.scriptGuestBtn{
         const $sidebar = $('#sidebar');
         if($sidebar.children('#makeGuestListEasy').length !== 0){console.log('#makeGuestListEasy already exists'); return;}
 
-        const $btn = $('<a id="makeGuestListEasy" class="btn btn-default ico wopen"><i class="fa fa-columns"></i><b>Simple Guest List</b></a>');
+        const $btn = $('<a id="makeGuestListEasy" class="btn btn-default ico wopen guestTableBtn"><i class="fa fa-columns"></i><b>Guest list table</b></a>');
         $sidebar.append($btn);
         $btn.on('click',function(event){event.preventDefault(); DoMakeSimpleGuestList();});
+    }
+
+
+    function AddGuestImportButton(){
+        const $sidebar = $('#sidebar');
+        if($sidebar.children('#makeGuestListEasyImport1').length !== 0){console.log('#makeGuestListEasyImport1 already exists'); return;}
+
+        const $btn = $('<a id="makeGuestListEasyImport1" class="btn btn-default ico wopen templateBtn"><i class="fa fa-file-export"></i><b>CSV import template</b></a>');
+        $sidebar.append($btn);
+        $btn.on('click',function(event){event.preventDefault(); DoGenerateGuestImportTemplate();});
+
+        if($sidebar.children('#makeGuestListEasyImport2').length !== 0){console.log('#makeGuestListEasyImport2 already exists'); return;}
+
+        const $btn2 = $('<a id="makeGuestListEasyImport2" class="btn btn-default ico wopen importBtn"><i class="fa fa-file-import"></i><b>Import CSV</b><br></a>');
+        const $csvFile = $('<input type="file" id="makeGuestListEasyImportFile">');
+        $btn2.append($csvFile);
+
+        $csvFile.on('change',function(event){
+            const file = event.target.files[0];
+            DoGuestImportCSV(file);
+        });
+        $sidebar.append($btn2);
+
+    }
+
+    function AddColumnSelections(){
+        if($('#myDefaultColumnSelector').length !== 0){return;}
+
+        const $divs = $('div[class^="Title_"]').filter(function(index){return $(this).text() == 'Columns';}).eq(0);
+        if($divs.length === 0){return;}
+
+        const $parent = $divs.parent().parent();
+
+        const $selector = $('<label>Suggested columns:<select id="myDefaultColumnSelector"><option value="-1">---</option></select></label>');
+
+        const $select = $selector.find('#myDefaultColumnSelector');
+
+        for(var i = 0; i < DEFAULT_COLUMN_OPTS.length; i++){
+            const lbl = DEFAULT_COLUMN_OPTS[i].label
+            $select.append($('<option>',{text:lbl,value:i}));
+        }
+
+        $select.on('change',function(event){event.preventDefault();DoSetColumnsFromPresets($(this).val());});
+
+        $parent.append($selector);
     }
 
     //*******************************
@@ -1057,6 +1707,10 @@ a.scriptGuestBtn{
             case /booking\/manifest/.test(window.location):
                 console.log('AddDailyManifestReportButtons');
                 AddDailyManifestReportButtons();
+
+                console.log('AddColumnSelections');
+                AddColumnSelections();
+
                 break;
             case /calendar\/customer/.test(window.location):
                 console.log('customer calendar - NOP');
@@ -1067,6 +1721,8 @@ a.scriptGuestBtn{
 
                 console.log('AddGuestlistButton');
                 AddSimpleGuestlistButton();
+
+                AddGuestImportButton();
                 break;
         }
 
