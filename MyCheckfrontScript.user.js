@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Checkfront Overnight Report Helper Script DEV VERSION
+// @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
 // @version      2025-10-02T12:25
 // @description  Add additional reporting functions / formats to CheckFront
