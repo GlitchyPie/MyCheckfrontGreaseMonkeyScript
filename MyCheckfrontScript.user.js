@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-10-16T14:38
+// @version      2025-10-16T14:56
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -38,6 +38,13 @@ console.log('Hello world');
 	<path d="M 76.714 31.655 c 0 0.598 -0.228 1.196 -0.683 1.651 l -9.44 9.44 c -0.441 0.441 -1.027 0.684 -1.651 0.684 s -1.21 -0.242 -1.651 -0.684 l -9.277 -9.277 v 54.195 c 0 1.288 -1.048 2.335 -2.335 2.335 H 38.325 c -1.288 0 -2.335 -1.048 -2.335 -2.335 V 33.469 l -9.278 9.277 c -0.441 0.441 -1.027 0.684 -1.651 0.684 c -0.624 0 -1.21 -0.242 -1.651 -0.684 l -9.44 -9.44 c -0.911 -0.91 -0.911 -2.393 0 -3.303 l 29.329 -29.33 c 0.46 -0.459 1.078 -0.697 1.74 -0.672 c 0.585 -0.025 1.203 0.213 1.663 0.672 l 29.33 29.33 C 76.487 30.459 76.714 31.057 76.714 31.655 z M 37.99 87.664 c 0 0.185 0.15 0.335 0.335 0.335 h 13.351 c 0.185 0 0.335 -0.15 0.335 -0.335 V 28.641 l 12.691 12.691 c 0.131 0.131 0.344 0.131 0.475 0 l 9.44 -9.44 c 0.131 -0.131 0.131 -0.344 0 -0.475 L 45.289 2.088 C 45.211 2.01 45.109 1.997 45.038 2 c -0.147 -0.003 -0.249 0.011 -0.327 0.09 L 15.383 31.418 c -0.131 0.131 -0.131 0.344 0 0.475 l 9.44 9.44 c 0.131 0.131 0.343 0.131 0.474 0 L 37.99 28.641 V 87.664 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
 </g>
 </svg>
+`;
+
+    /*
+    changing bed sheet by Gan Khoon Lay from <a href="https://thenounproject.com/browse/icons/term/changing-bed-sheet/" target="_blank" title="changing bed sheet Icons">Noun Project</a> (CC BY 3.0)
+    */
+    const BED_ICON = `
+<svg width="326" height="222.18" version="1.1" viewBox="0 0 326 222.18" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"><path d="m43.376 190.66c-3.033 0-5.5-2.467-5.5-5.5v-27.645h-5.876v-87.999c0-2.209-1.792-4-4-4h-24c-2.209 0-4 1.791-4 4v140.67c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-6h179v-13.523z"/><path d="m189.56 58.848c3.948-2.166 8.101-4.635 12.398-7.251 0.152-0.287 0.3-0.566 0.457-0.865 0.77-1.471 1.534-2.925 2.311-4.341-5.946 3.645-11.66 7.127-16.963 10.02 0.319 0.364 0.618 0.748 0.895 1.153 0.312 0.458 0.612 0.882 0.902 1.284z"/><path d="m92.188 134.32c-0.701 0.991-1.393 1.993-2.08 3h-46.732c-1.378 0-2.5 1.121-2.5 2.5v45.334c0 1.379 1.122 2.5 2.5 2.5h167.62v-28.079c-4.971-1.646-9.922-3.351-14.838-5.047-24.058-8.303-48.934-16.888-72.887-16.888-12.415 0-23.689 2.244-34.305 6.846 21.963-34.584 53.021-59.959 79.109-74.689-0.472-0.919-0.816-1.877-1.033-2.853-24.336 13.667-53.005 36.507-74.853 67.376z"/><path d="m287.56 55.102c3.873 29.122 10.442 72.451 19.23 108.55-10.516 4.865-21.587 7.435-33.705 7.832v16.169h10.955c1.378 0 2.5-1.121 2.5-2.5v-12.037c1.006-0.177 2.006-0.37 3-0.58v12.617c0 3.033-2.467 5.5-5.5 5.5h-10.955v13.523h20.913v6c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-71.334c0-2.209-1.792-4-4-4h-18.459c-5.721-28.721-10.128-58.486-13.022-80.258-0.962 0.198-1.947 0.37-2.957 0.514z"/><path d="m221.05 33.546c0.583-0.099 1.132-0.147 1.675-0.147h29.002c1.484-2.674 2.436-5.682 2.721-8.884 4.253-1.267 8.484-2.163 12.662-2.582 0.061-1.034 0.256-2.065 0.592-3.071-4.365 0.37-8.771 1.247-13.188 2.509-0.589-11.902-10.423-21.371-22.472-21.371-12.426 0-22.5 10.073-22.5 22.5 0 4.629 1.399 8.93 3.796 12.506 0.319 0.476 0.659 0.937 1.013 1.386 1.935-1.517 4.125-2.535 6.699-2.846z"/><path d="m205.96 52.587c-2.476 4.73-8.273 15.809-11.523 15.998-0.057-6e-3 -3.06 0.067-9.083-8.768-2.49-3.652-7.468-4.59-11.116-2.103-3.65 2.489-4.592 7.466-2.103 11.117 7.221 10.591 14.498 15.757 22.216 15.756 0.337 0 0.677-0.01 1.016-0.03 8.816-0.513 14.866-7.453 19.633-15.254v140.52c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-90.272h4.635v90.272c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-158.05c1.832 0.042 3.641 0.073 5.392 0.073 14.189 0 25.354-1.715 28.064-10.666 2.975-9.819-7.484-17.965-19.229-25.307-3.748-2.341-8.684-1.202-11.024 2.544-2.342 3.747-1.202 8.682 2.544 11.024 4.05 2.531 6.802 4.529 8.664 6.044-3.805 0.366-9.427 0.441-16.819 0.222-1.713-0.051-3.167-0.092-4.229-0.092-0.371 0-0.732 0.034-1.09 0.083h-38.635c-0.459 0-0.907 0.048-1.344 0.124-7.075 0.822-10.964 8.242-15.425 16.766z"/></svg>
 `;
 
     //https://github.com/n3r4zzurr0/svg-spinners
@@ -1852,6 +1859,7 @@ a.scriptGuestBtn{
             const $newBookingButton = $('#bookingButtonDesktop');
             if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
 
+            //####### Overnight report
             const $cloneButton = $newBookingButton.clone(true, false);
 
             configureOverNightReportBtnClonedButton($cloneButton,'overnightButtonDesktop');
@@ -1859,6 +1867,7 @@ a.scriptGuestBtn{
             $cloneButton.children('span').text('Overnight Report');
             $cloneButton.insertBefore($newBookingButton);
 
+            //####### Changeover report
             const $cloneButton2 = $newBookingButton.clone(true, false);
 
             configureChangeOverBtnClonedButton($cloneButton2,'changeOverButtonDesktop');
@@ -1874,6 +1883,7 @@ a.scriptGuestBtn{
             const $newBookingButton = $('#bookingButtonMobile');
             if($newBookingButton.length !== 1){console.log('#bookingButtonMobile not found'); return}
 
+            //####### Overnight report
             const $cloneButton = $newBookingButton.clone(true, false);
 
             configureOverNightReportBtnClonedButton($cloneButton,'overnightButtonMobile');
@@ -1883,6 +1893,18 @@ a.scriptGuestBtn{
             $iconSpan.html(MOON_ICON);
 
             $cloneButton.insertBefore($newBookingButton);
+
+            //####### Changeover report
+            const $cloneButton2 = $newBookingButton.clone(true, false);
+
+            configureChangeOverBtnClonedButton($cloneButton2,'changeOverButtonMobile');
+
+            const $iconSpan2 = $cloneButton2.find('span[class^="Icon"]');
+            $iconSpan2.empty();
+            $iconSpan2.html(BED_ICON);
+
+            $cloneButton2.insertBefore($cloneButton);
+
         })();
     }
 
