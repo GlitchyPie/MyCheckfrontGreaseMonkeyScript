@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-10-02T12:25
+// @version      2025-10-16T11:52
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -673,6 +673,85 @@ a.scriptGuestBtn{
         }
     }
 
+    function onlyUnique(value, index, array) {
+        return array.indexOf(value) === index;
+    }
+
+    function getCsvExport_generic(args, url){
+        const PROMISE = $.Deferred();
+
+        const data = new URLSearchParams(window.location.search);
+        for(const [key,value] of Object.entries(args)){
+            data.set(key,value);
+        }
+
+        $.get({
+            url:'/get/export/',
+            data:data.toString(),
+            success:(data_, result_, xhr_,)=>{
+                const $frame = $(data_);
+                const $form = $frame.find('#export_form').eq(0);
+
+                $form.find('#rpt_name').val(`report`);
+                $form.find('#format').val('csv');
+                $form.find('#columns').val('*');
+                $form.find('#destination').val('desktop');
+                $form.find('#iso_dates').prop('checked',true);
+
+                const formData = $form.serialize();
+
+                $.get({
+                    url:'/booking/manifest/',
+                    data: formData,
+                    success: (data__, result__, xhr__)=>PROMISE.resolve(data__, result__,xhr__, formData),
+                    dataType:'text'
+                });
+            },
+            dataType:'html'
+        });
+
+        return PROMISE.promise();
+    }
+
+    function replaceDailyManifestWith($element, title){
+        const $pageTitle = findPageTitle()
+        $pageTitle.data('html',$pageTitle.html());
+        $pageTitle.text(title); //Change page title
+
+        //Find the actions bar where the date selectors exist and hide
+        //any nodes that should be hidden when printing.
+        const $actions = findPrimaryActionsDiv();
+        const $printViewHidden = $actions.find('.printViewHidden');
+        $printViewHidden.hide();
+
+        //Display the text version.
+        const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
+        $text.show(); //Make sure the text version is shown.
+
+        const $page = getMainPageContentAfterHeaders();
+        $page.data('previouslyVisable',$page.children(':visible'));
+        $page.data('previouslyVisable').hide(); //Emptying the div breaks things
+        $page.append($element);
+    }
+    function revertDailyManifest($element){
+        $element.remove();
+
+        const $actions = findPrimaryActionsDiv();
+        const $printViewHidden = $actions.find('.printViewHidden');
+        $printViewHidden.show();
+
+        const $page = getMainPageContentAfterHeaders();
+        $page.data('previouslyVisable').show();
+        $page.data('previouslyVisable',undefined);
+
+        //Display the text version.
+        const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
+        $text.hide(); //Make sure the text version is shown.
+
+        const $pageTitle = findPageTitle()
+        $pageTitle.html($pageTitle.data('html')); //Change page title
+        $pageTitle.data('html',undefined);
+    }
     //========================================================================================
     //================================ Modification functions ================================
     //= These are the functions that actually provide the extra features
@@ -680,67 +759,24 @@ a.scriptGuestBtn{
 
     function DoConvertDailyManifest_2_overnight(){
         //*******************************
-        //* Request the export form then pass the results to step 2.
+        //* Request the export form, perform the request for the CSV data, and pass it over to step 2
         //*******************************
         function ConvertDailyManifest_2_OvernightReport_1(){
-            $.get({
-                url:'/get/export/',
-                data:window.location.search.substring(1),
-                success:ConvertDailyManifest_2_OvernightReport_2,
-                dataType:'html'
-            });
+            getCsvExport_generic({},'/booking/manifest/').then(ConvertDailyManifest_2_OvernightReport_2);
         }
-        //*******************************
-        //* Change some the form values and use the form data to request the export CSV.
-        //* Pass the CSV to step 3
-        //*******************************
-        function ConvertDailyManifest_2_OvernightReport_2(data, result, xhr){
-            const $frame = $(data);
-            const $form = $frame.find('#export_form').eq(0);
 
-            $form.find('#rpt_name').val('Overnight Report');
-            $form.find('#format').val('csv');
-            $form.find('#columns').val('*');
-            $form.find('#destination').val('desktop');
-
-            const formData = $form.serialize();
-
-            $.get({
-                url:'/booking/manifest/',
-                data: formData,
-                success:ConvertDailyManifest_2_OvernightReport_3,
-                dataType:'text'
-            });
-
-        }
         //*******************************
         //* Parse the CSV and convert it to a HTML table.
         //* Hide the main content of the page and replace with generated table.
         //*******************************
-        function ConvertDailyManifest_2_OvernightReport_3(data,result,XHR){
+        function ConvertDailyManifest_2_OvernightReport_2(data,result,XHR){
             const HTML = CSV_2_HTML(data, OVERNIGHT_HEADERS);
 
             const $table = $(HTML);
             ApplyGenericTableFormatting($table);
             $table.attr('id','overnightTable');
 
-
-            findPageTitle().text('Overnight Report'); //Change page title
-
-            //Find the actions bar where the date selectors exist and hide
-            //any nodes that should be hidden when printing.
-            const $actions = findPrimaryActionsDiv();
-            const $printViewHidden = $actions.find('.printViewHidden');
-            $printViewHidden.hide();
-
-            //Display the text version.
-            const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
-            $text.show(); //Make sure the text version is shown.
-
-            const $page = getMainPageContentAfterHeaders();
-            $page.data('previouslyVisable',$page.children(':visible'));
-            $page.data('previouslyVisable').hide(); //Emptying the div breaks things
-            $page.append($table);
+            replaceDailyManifestWith($table,'Overnight Report');
 
             $('#overnightButtonDesktop').text('Close Report');
 
@@ -752,19 +788,7 @@ a.scriptGuestBtn{
             showSpinner();
             ConvertDailyManifest_2_OvernightReport_1();
         }else{
-            $table.remove();
-            const $actions = findPrimaryActionsDiv();
-            const $printViewHidden = $actions.find('.printViewHidden');
-            $printViewHidden.show();
-
-            const $page = getMainPageContentAfterHeaders();
-            $page.data('previouslyVisable').show();
-            $page.data('previouslyVisable',undefined);
-
-            //Display the text version.
-            const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
-            $text.hide(); //Make sure the text version is shown.
-
+            revertDailyManifest($table);
             $('#overnightButtonDesktop').text('Overnight Report');
         }
     }
@@ -1582,24 +1606,239 @@ a.scriptGuestBtn{
     }
 
 
+    function DoChangeOverDayReport(){
+        const MAX_LOOK_AHEAD = 30;
+        function getCsvExport(timeframe,date){
+            if(!!date){
+                return getCsvExport_generic({'timeframe':timeframe,
+                                             'date':`${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`
+                                            },'/booking/manifest/');
+            }else{
+                return getCsvExport_generic({'timeframe':timeframe
+                                            },'/booking/manifest/');
+            }
+        }
+
+        //Get the ending bookings
+        function DoChangeOverDayReport_1(){
+            getCsvExport('ending').then(DoChangeOverDayReport_2);
+        }
+
+        function DoChangeOverDayReport_2(data, result, xhr, formData){
+            let leaving_bookings_raw = BADLY_PARSE_CSV(data);
+            let addedProducts = [];
+            const leaving_bookings = [leaving_bookings_raw[0]];
+
+            for(var i = 1; i < leaving_bookings_raw.length; i++){
+                const pn = leaving_bookings_raw[i]['Product Name'];
+                if(!addedProducts.includes(pn)){
+                    leaving_bookings.push(leaving_bookings_raw[i]);
+                    addedProducts.push(pn);
+                }
+            }
+            addedProducts = undefined;
+            leaving_bookings_raw = undefined;
+
+
+            const params = new URLSearchParams(formData);
+            const dateStr = params.get('date');
+            let searchStartDate = new Date();
+            if(dateStr != undefined && dateStr != ''){
+                searchStartDate = new Date(params.get('date'));
+            }
+
+            function GetAllCheckinsFor(dte_, formData_){
+                const D = $.Deferred();
+
+                getCsvExport('starting', dte_).then((data_,result_,xhr_,formData_)=>{
+                    D.resolve(BADLY_PARSE_CSV(data_));
+                });
+
+                return D.promise();
+            }
+
+            function CheckCheckinsAgainstLeaving(leaving_, checkins_){
+                let allFound = true;
+                if(checkins_.length == 1){
+                    return false;
+                }
+
+                for(var i = 1; i < leaving_.length; i++){
+                    const L = leaving_[i];
+                    inLoop: for(var j = 1; j < checkins_.length; j++){
+                        const C = checkins_[j];
+                        if(L['Product Name'] === C['Product Name']){
+                            if(L.Status.toLowerCase() != 'maintenance'){
+                                if(!Object.hasOwn(leaving_[i],'Next')){
+                                    leaving_[i].Next = C;
+                                    break inLoop;
+                                }
+                            }
+                        }
+                    }
+                    allFound = (allFound && (!!leaving_[i].Next))
+                }
+                return allFound;
+            }
+
+            function doSearchLoop(date_, leaving_, formData_, allDonePromise_, iterations = 0){
+                const allDonePromise = allDonePromise_ ?? $.Deferred();
+
+                console.log(`Serach iteration: ${iterations}`);
+
+                if(iterations >= MAX_LOOK_AHEAD){
+                    allDonePromise.resolve(leaving_);
+                    return allDonePromise.promise();
+                }
+
+                const P = GetAllCheckinsFor(date_, formData_);
+                P.then((arriving)=>CheckCheckinsAgainstLeaving(leaving_,arriving)).
+                  then((haveFoundAll)=>{
+                    if(haveFoundAll === true){
+                        allDonePromise.resolve(leaving_);
+                    }else{
+                        const Dnext = date_;
+                        Dnext.setDate(Dnext.getDate()+1);
+                        setTimeout(doSearchLoop(Dnext,leaving_,formData_,allDonePromise, iterations+1),150);
+                    }
+                });
+
+                return allDonePromise.promise();
+            }
+
+            doSearchLoop(searchStartDate, leaving_bookings, formData).then(MakeTable);
+        }
+
+        function MakeTable(leavingAr){
+            const $table = $('<table><thead><tr><th>Room</th><th>Single / Twin / Double</th><th>Accessability Notes</th></tr></thead><tbody></tbody></table>');
+
+            const $tbody = $table.find('tbody').eq(0);
+
+            function SingleTwinDouble(row){
+                switch(true){
+                    case(row['Upgrade to a Twin room'] == '1'):
+                        return 'Twin';
+                    case(row['Upgrade to a Double room'] == '1'):
+                        return 'Double';
+                    case(row['Single'] == '1'):
+                        return 'Single';
+                    default:
+                        return `${row['No of Guests']} beds`;
+                }
+            }
+
+            for(var i = 1; i < leavingAr.length; i++){
+                const leaving = leavingAr[i];
+                const data = [leaving['Product Name'],'',''];
+                const next = leaving.Next;
+                if(!!next){
+                    const status = next.Status.toLowerCase();
+                    switch(true){
+                        case(status == 'trustee / vip'):
+                            data[1] = `VIP!! ${SingleTwinDouble(next)}`;
+                            break;
+                        case(status == 'vols'):
+                            data[1] = `${SingleTwinDouble(next)} (VOL)`;
+                            break;
+                        case(status == 'gse tutor'):
+                            data[1] = 'GSE (Tutor)';
+                            break;
+                        case(status == 'm\'arch 5th yrs'):
+                            data[1] = 'GSE (Student)';
+                            break;
+                        case(status == 'gse'):
+                            data[1] = 'GSE (Student)';
+                            break;
+                        case(status == 'gse provisional'):
+                            data[1] = 'GSE (Unalocated?)';
+                            break;
+                        case(status == 'staff'):
+                            data[1] = `${SingleTwinDouble(next)} (Staff)`;
+                            break;
+                        case(status == 'schools & groups'):
+                            data[1] = `${SingleTwinDouble(next)} (Sch'l / group)`;
+                            break;
+                        case(status == 'prov schools & group'):
+                            data[1] = `${SingleTwinDouble(next)} (Provisional Sch'l / group)`;
+                            break;
+                        case(status == 'engagement'):
+                            data[1] = `${SingleTwinDouble(next)} (Engagement group)`;
+                            break;
+                        case(status == 'prov engagement'):
+                            data[1] = `${SingleTwinDouble(next)} (Provisional engagement group)`;
+                            break;
+                        case(status == 'sc'):
+                            data[1] = `${SingleTwinDouble(next)} (Short Course)`;
+                            break;
+                        default:
+                            data[1] = SingleTwinDouble(next);
+                            break;
+                    }
+                    data[2] = next['Accessibility requirements'];
+                }else{
+                    data[1] = `No booking within ~${MAX_LOOK_AHEAD} days`;
+                }
+
+                const $row = $('<tr></tr>');
+                for(const D of data){
+                    const $td = $('<td></td>');
+                    $td.text(D);
+                    $row.append($td);
+                }
+                $tbody.append($row);
+
+            }
+
+            ApplyGenericTableFormatting($table);
+            $table.attr('id','changeoverTable');
+            replaceDailyManifestWith($table,'Changeovers');
+
+            $('#changeOverButtonDesktop').text('Close Report');
+
+            hideSpinner();
+        }
+
+        const $table = $('#changeoverTable');
+        if($table.length === 0){
+            showSpinner();
+            DoChangeOverDayReport_1();
+        }else{
+            revertDailyManifest($table);
+            $('#changeOverButtonDesktop').text('Changeover Report');
+        }
+
+    }
     //==================================== AddButtons etc =====================================
     //*******************************
     //* Adds an "Overnight Report" button to the daily manifest report.
     //* The overnight report uses the daily manifest export to generate a simplified table.
     //*******************************
     function AddDailyManifestReportButtons(){
-        function onClick(event){
+        function overNightReportBtnClick(event){
             event.preventDefault();
             DoConvertDailyManifest_2_overnight();
         }
-        function configureCloneButton($cloneButton, id){
+        function changeOverReportBtnClick(event){
+            event.preventDefault();
+            DoChangeOverDayReport();
+        }
+        function configureOverNightReportBtnClonedButton($cloneButton, id){
             $cloneButton.attr({'id':id,
                                'title':'Overnight Report'});
             $cloneButton.removeAttr('href');
             $cloneButton.css({'margin-right':'10px'});
 
-            $cloneButton.on('click',onClick);
+            $cloneButton.on('click',overNightReportBtnClick);
         }
+        function configureChangeOverBtnClonedButton($cloneButton, id){
+            $cloneButton.attr({'id':id,
+                               'title':'Changeover Report'});
+            $cloneButton.removeAttr('href');
+            $cloneButton.css({'margin-right':'10px'});
+
+            $cloneButton.on('click',changeOverReportBtnClick);
+        }
+
         (function AddDesktopButton(){
             if($('#overnightButtonDesktop').length != 0){console.log('#overnightButtonDesktop already exists'); return}
 
@@ -1608,10 +1847,17 @@ a.scriptGuestBtn{
 
             const $cloneButton = $newBookingButton.clone(true, false);
 
-            configureCloneButton($cloneButton,'overnightButtonDesktop');
+            configureOverNightReportBtnClonedButton($cloneButton,'overnightButtonDesktop');
 
             $cloneButton.children('span').text('Overnight Report');
             $cloneButton.insertBefore($newBookingButton);
+
+            const $cloneButton2 = $newBookingButton.clone(true, false);
+
+            configureChangeOverBtnClonedButton($cloneButton2,'changeOverButtonDesktop');
+
+            $cloneButton2.children('span').text('Changeover Report');
+            $cloneButton2.insertBefore($cloneButton);
             
         })();
         (function AddDesktopButton(){
@@ -1623,7 +1869,7 @@ a.scriptGuestBtn{
 
             const $cloneButton = $newBookingButton.clone(true, false);
 
-            configureCloneButton($cloneButton,'overnightButtonMobile');
+            configureOverNightReportBtnClonedButton($cloneButton,'overnightButtonMobile');
 
             const $iconSpan = $cloneButton.find('span[class^="Icon"]');
             $iconSpan.empty();
