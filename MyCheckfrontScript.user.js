@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-10-16T11:52
+// @version      2025-10-16T14:15
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -762,7 +762,7 @@ a.scriptGuestBtn{
         //* Request the export form, perform the request for the CSV data, and pass it over to step 2
         //*******************************
         function ConvertDailyManifest_2_OvernightReport_1(){
-            getCsvExport_generic({},'/booking/manifest/').then(ConvertDailyManifest_2_OvernightReport_2);
+            getCsvExport_generic({timeframe:'ongoing'},'/booking/manifest/').then(ConvertDailyManifest_2_OvernightReport_2);
         }
 
         //*******************************
