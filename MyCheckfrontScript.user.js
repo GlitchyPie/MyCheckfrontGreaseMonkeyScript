@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-10-16T14:15
+// @version      2025-10-16T14:38
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -571,6 +571,13 @@ a.scriptGuestBtn{
     }*/
 
     //================================ Helper functions ======================================
+    function toYYYYMMDD(dte){
+        const YYYY= `${dte.getFullYear()}`;
+        const MM = `${dte.getMonth() + 1}`.padStart(2,'0');
+        const DD = `${dte.getDate()}`.padStart(2,'0');
+
+        return `${YYYY}-${MM}-${DD}`;
+    }
     function ApplyGenericTableFormatting($table){
         $table.addClass('scriptTable');
     }
@@ -1611,7 +1618,7 @@ a.scriptGuestBtn{
         function getCsvExport(timeframe,date){
             if(!!date){
                 return getCsvExport_generic({'timeframe':timeframe,
-                                             'date':`${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`
+                                             'date':toYYYYMMDD(date),
                                             },'/booking/manifest/');
             }else{
                 return getCsvExport_generic({'timeframe':timeframe
