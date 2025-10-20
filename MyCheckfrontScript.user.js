@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-10-16T14:56
+// @version      2025-10-20T09:04
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -186,6 +186,15 @@ table.scriptTable.guests td.subRowLabel {
 table.scriptTable.guests td:not([class]):first-child {
     font-weight:bold;
     padding-left:0.5rem;
+}
+
+#changeoverTable tr td:first-of-type span{
+    float:right;
+    margin-right: 1em;
+}
+#changeoverTable tr th:first-of-type span{
+    float:right;
+    margin-right: 1em;
 }
 
 #my-spinner{
@@ -585,6 +594,17 @@ a.scriptGuestBtn{
 
         return `${YYYY}-${MM}-${DD}`;
     }
+
+    function daysBetween(startDate, endDate) {
+        function treatAsUTC(date) {
+            const result = new Date(date);
+            result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
+            return result;
+        }
+        const millisecondsPerDay = 24 * 60 * 60 * 1000;
+        return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
+    }
+
     function ApplyGenericTableFormatting($table){
         $table.addClass('scriptTable');
     }
@@ -817,7 +837,6 @@ a.scriptGuestBtn{
             const formData = new FormData();
             formData.append('report_id', report_id);
             formData.append('columns', JSON.stringify(value));
-
             const $request = $.Deferred();
             requests.push($request);
 
@@ -1466,7 +1485,7 @@ a.scriptGuestBtn{
                        form_key:form_key
                       });
 
-            return $whenDone;
+            return $whenDone.promise();
         }
 
         function DoCsvImport(loadedReader){
@@ -1724,7 +1743,7 @@ a.scriptGuestBtn{
         }
 
         function MakeTable(leavingAr){
-            const $table = $('<table><thead><tr><th>Room</th><th>Single / Twin / Double</th><th>Accessability Notes</th></tr></thead><tbody></tbody></table>');
+            const $table = $('<table><thead><tr><th>Room<span>Next checkin</span></th><th>Single / Twin / Double</th><th>Accessability Notes</th></tr></thead><tbody></tbody></table>');
 
             const $tbody = $table.find('tbody').eq(0);
 
@@ -1741,10 +1760,47 @@ a.scriptGuestBtn{
                 }
             }
 
+            function GetDaysTillCheckIn(row){
+                function getDate(row,start_end){
+                    const d = row[`${start_end} Date`];
+                    const t = row[`${start_end} Time`];
+                    switch(true){
+                        case(start_end == 'Start'):
+                            if(t == ''){
+                                return new Date(d);
+                            }else{
+                                return new Date(`${d} ${t}`);
+                            }
+                            break;
+                        case(start_end == 'End'):
+                            if(t == ''){
+                                var k = new Date(d);
+                                k.setDate(k.getDate()+1);
+                                return k
+                            }else{
+                                return new Date(`${d} ${t}`);
+                            }
+                            break;
+                        default:
+                            throw Error('Invalid start_end value');
+                    }
+                }
+
+                if(!(!!row.Next)){
+                    return -1;
+                }
+
+                const cod = getDate(row, 'End');
+                const cid = getDate(row.Next, 'Start');
+
+                return Math.trunc(daysBetween(cod, cid));
+            }
+
             for(var i = 1; i < leavingAr.length; i++){
                 const leaving = leavingAr[i];
                 const data = [leaving['Product Name'],'',''];
                 const next = leaving.Next;
+                const days = GetDaysTillCheckIn(leaving);
                 if(!!next){
                     const status = next.Status.toLowerCase();
                     switch(true){
@@ -1788,6 +1844,17 @@ a.scriptGuestBtn{
                             data[1] = SingleTwinDouble(next);
                             break;
                     }
+                    switch(true){
+                        case (days == 0):
+                            data[0] += ` <span>[&nbsp;Today!&nbsp;&nbsp;]</span>`;
+                            break;
+                        case (days ==1):
+                            data[0] += ` <span>[&nbsp;Tomorrow!&nbsp;]</span>`;
+                            break;
+                        case (days > 0):
+                            data[0] += ` <span>[&nbsp;${days} days&nbsp;]</span>`;
+                            break;
+                    }
                     data[2] = next['Accessibility requirements'];
                 }else{
                     data[1] = `No booking within ~${MAX_LOOK_AHEAD} days`;
@@ -1796,7 +1863,7 @@ a.scriptGuestBtn{
                 const $row = $('<tr></tr>');
                 for(const D of data){
                     const $td = $('<td></td>');
-                    $td.text(D);
+                    $td.html(D);
                     $row.append($td);
                 }
                 $tbody.append($row);
