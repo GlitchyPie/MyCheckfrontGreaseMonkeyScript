@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-10-20T09:04
+// @version      2025-10-23T11:10
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -18,65 +18,6 @@ console.log('Hello world');
     'use strict';
 
     console.log('Running main function...');
-
-    //                     Column Header,  Column Value(s) [Label,Value]
-    const OVERNIGHT_HEADERS = [['Room', '{Product Name}'],
-                               ['Name', [['Booking', '{First name} {Surname}'],['Guest','{Guest First Name} {Guest Last Name}']]],
-                               ['Checkin Status',[['Booking','{Check In / Out}'],['Guest','{Guest Check In Status}']]],
-                               ['Accessability needs','{Accessibility requirements}']
-                              ];
-
-    //https://www.iconpacks.net/free-icon/moon-2287.html
-    const MOON_ICON = `
-<svg width="724" height="24" version="1.1" viewBox="0 0 713.75 702.37" xmlns="http://www.w3.org/2000/svg"><g transform="translate(200.55 195)" stroke-linecap="round"><path d="m110.09 507.37c-171.29 0-310.64-139.35-310.64-310.64 0-145.25 98.726-269.64 240.08-302.5 5.4641-1.2609 11.095 1.4671 13.474 6.5585 2.3791 5.0993 0.85649 11.166-3.6401 14.537-64.665 48.534-101.75 122.66-101.75 203.38 0 140.13 114 254.13 254.14 254.13 66.187 0 128.89-25.369 176.56-71.437 4.0445-3.9176 10.278-4.4569 14.941-1.2847 4.6631 3.1563 6.4633 9.1438 4.33 14.362-48.058 117.18-160.89 192.89-287.49 192.89zm-116.63-572.84c-102.41 45.14-170.23 146.5-170.23 262.2 0 158.16 128.68 286.85 286.85 286.85 98.488 0 187.97-49.637 240.24-129.99-44.109 28.018-95.316 43.046-148.58 43.046-153.25 0-277.93-124.67-277.93-277.92 0-69.146 24.878-133.87 69.645-184.18z"/><path d="m115.74 214.67c-2.4664 0-4.9169-0.76926-6.9946-2.2681-3.6639-2.6646-5.4958-7.1691-4.7345-11.642l11.23-65.466-47.567-46.361c-3.2436-3.1563-4.4093-7.8908-3.0136-12.197 1.4037-4.3062 5.1231-7.4467 9.6038-8.097l65.735-9.5562 29.398-59.566c1.9985-4.0604 6.1302-6.6299 10.666-6.6299 4.5362 0 8.668 2.5695 10.666 6.6299l29.398 59.566 65.735 9.5562c4.4728 0.6503 8.2001 3.7908 9.6038 8.097 1.3958 4.3062 0.22998 9.0328-3.0136 12.197l-47.567 46.369 11.23 65.466c0.76925 4.4648-1.0706 8.9773-4.7345 11.642-3.6718 2.6646-8.5173 3.0136-12.53 0.90407l-58.788-30.913-58.788 30.913c-1.7447 0.90407-3.6401 1.3561-5.5354 1.3561zm64.324-57.615c1.9033 0 3.7987 0.45996 5.5354 1.364l42.991 22.602-8.208-47.876c-0.65823-3.8542 0.61857-7.7956 3.426-10.532l34.783-33.903-48.074-6.9867c-3.8701-0.56306-7.2246-2.9977-8.9535-6.503l-21.499-43.562-21.492 43.562c-1.7368 3.5053-5.0834 5.9478-8.9535 6.503l-48.074 6.9867 34.783 33.903c2.8074 2.736 4.0842 6.6695 3.426 10.532l-8.2159 47.876 42.991-22.602c1.7368-0.90407 3.6321-1.364 5.5354-1.364z"/><path d="m266.32-21.305c-2.4664 0-4.9169-0.76925-6.9946-2.276-3.6639-2.6567-5.4958-7.1691-4.7345-11.634l8.2477-48.074-34.918-34.037c-3.2436-3.1642-4.4093-7.8908-3.0136-12.197 1.4037-4.3062 5.1231-7.4467 9.6038-8.097l48.257-7.0105 21.595-43.736c1.9985-4.0604 6.1302-6.6298 10.666-6.6298 4.5283 0 8.668 2.5695 10.666 6.6298l21.587 43.728 48.257 7.0105c4.4728 0.6503 8.2001 3.7908 9.6038 8.097 1.3958 4.3062 0.22998 9.0328-3.0136 12.197l-34.918 34.037 8.2477 48.074c0.76925 4.4648-1.0706 8.9693-4.7345 11.634-3.6639 2.6646-8.5173 3.0136-12.53 0.90407l-43.157-22.689-43.165 22.689c-1.7526 0.92786-3.6559 1.3799-5.5513 1.3799zm-4.5283-96.228 22.134 21.579c2.8074 2.736 4.0842 6.6695 3.426 10.532l-5.2262 30.477 27.368-14.386c3.4735-1.824 7.6132-1.8161 11.071 0l27.36 14.386-5.2262-30.477c-0.65822-3.8542 0.61858-7.7956 3.426-10.532l22.134-21.579-30.588-4.449c-3.8701-0.56306-7.2246-2.9977-8.9535-6.5109l-13.688-27.725-13.696 27.733c-1.7288 3.5052-5.0834 5.9478-8.9535 6.503z"/><path d="m401.23 233.19c-2.4664 0-4.9169-0.76925-6.9946-2.2681-3.6639-2.6646-5.4958-7.1691-4.7345-11.642l6.2412-36.393-26.44-25.774c-3.2436-3.1642-4.4093-7.8908-3.0136-12.197 1.4037-4.3062 5.1231-7.4467 9.6038-8.097l36.536-5.3055 16.353-33.118c1.9985-4.0604 6.1302-6.6299 10.666-6.6299 4.5283 0 8.668 2.5695 10.666 6.6299l16.345 33.11 36.543 5.3055c4.4728 0.6503 8.2001 3.7908 9.6038 8.097 1.4037 4.3062 0.22999 9.0328-3.0136 12.197l-26.448 25.774 6.2492 36.401c0.76926 4.4648-1.0706 8.9773-4.7345 11.642-3.6718 2.6646-8.5252 3.0056-12.53 0.90407l-32.681-17.185-32.681 17.185c-1.7447 0.912-3.6401 1.364-5.5354 1.364zm1.943-76.291 13.656 13.315c2.8074 2.736 4.0842 6.6695 3.426 10.532l-3.2198 18.803 16.884-8.8821c3.4735-1.8161 7.6053-1.8161 11.071 0l16.884 8.8742-3.2277-18.795c-0.65823-3.8621 0.61857-7.7956 3.426-10.532l13.664-13.315-18.882-2.7439c-3.8701-0.56306-7.2246-2.9977-8.9535-6.5109l-8.438-17.106-8.4459 17.106c-1.7288 3.5053-5.0834 5.9478-8.9535 6.503z"/></g></svg>
-`;
-
-    //https://www.iconpacks.net/free-icon/arrow-up-2818.html
-    const UP_ARROW = `
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve">
-<g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
-	<path d="M 76.714 31.655 c 0 0.598 -0.228 1.196 -0.683 1.651 l -9.44 9.44 c -0.441 0.441 -1.027 0.684 -1.651 0.684 s -1.21 -0.242 -1.651 -0.684 l -9.277 -9.277 v 54.195 c 0 1.288 -1.048 2.335 -2.335 2.335 H 38.325 c -1.288 0 -2.335 -1.048 -2.335 -2.335 V 33.469 l -9.278 9.277 c -0.441 0.441 -1.027 0.684 -1.651 0.684 c -0.624 0 -1.21 -0.242 -1.651 -0.684 l -9.44 -9.44 c -0.911 -0.91 -0.911 -2.393 0 -3.303 l 29.329 -29.33 c 0.46 -0.459 1.078 -0.697 1.74 -0.672 c 0.585 -0.025 1.203 0.213 1.663 0.672 l 29.33 29.33 C 76.487 30.459 76.714 31.057 76.714 31.655 z M 37.99 87.664 c 0 0.185 0.15 0.335 0.335 0.335 h 13.351 c 0.185 0 0.335 -0.15 0.335 -0.335 V 28.641 l 12.691 12.691 c 0.131 0.131 0.344 0.131 0.475 0 l 9.44 -9.44 c 0.131 -0.131 0.131 -0.344 0 -0.475 L 45.289 2.088 C 45.211 2.01 45.109 1.997 45.038 2 c -0.147 -0.003 -0.249 0.011 -0.327 0.09 L 15.383 31.418 c -0.131 0.131 -0.131 0.344 0 0.475 l 9.44 9.44 c 0.131 0.131 0.343 0.131 0.474 0 L 37.99 28.641 V 87.664 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
-</g>
-</svg>
-`;
-
-    /*
-    changing bed sheet by Gan Khoon Lay from <a href="https://thenounproject.com/browse/icons/term/changing-bed-sheet/" target="_blank" title="changing bed sheet Icons">Noun Project</a> (CC BY 3.0)
-    */
-    const BED_ICON = `
-<svg width="326" height="222.18" version="1.1" viewBox="0 0 326 222.18" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"><path d="m43.376 190.66c-3.033 0-5.5-2.467-5.5-5.5v-27.645h-5.876v-87.999c0-2.209-1.792-4-4-4h-24c-2.209 0-4 1.791-4 4v140.67c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-6h179v-13.523z"/><path d="m189.56 58.848c3.948-2.166 8.101-4.635 12.398-7.251 0.152-0.287 0.3-0.566 0.457-0.865 0.77-1.471 1.534-2.925 2.311-4.341-5.946 3.645-11.66 7.127-16.963 10.02 0.319 0.364 0.618 0.748 0.895 1.153 0.312 0.458 0.612 0.882 0.902 1.284z"/><path d="m92.188 134.32c-0.701 0.991-1.393 1.993-2.08 3h-46.732c-1.378 0-2.5 1.121-2.5 2.5v45.334c0 1.379 1.122 2.5 2.5 2.5h167.62v-28.079c-4.971-1.646-9.922-3.351-14.838-5.047-24.058-8.303-48.934-16.888-72.887-16.888-12.415 0-23.689 2.244-34.305 6.846 21.963-34.584 53.021-59.959 79.109-74.689-0.472-0.919-0.816-1.877-1.033-2.853-24.336 13.667-53.005 36.507-74.853 67.376z"/><path d="m287.56 55.102c3.873 29.122 10.442 72.451 19.23 108.55-10.516 4.865-21.587 7.435-33.705 7.832v16.169h10.955c1.378 0 2.5-1.121 2.5-2.5v-12.037c1.006-0.177 2.006-0.37 3-0.58v12.617c0 3.033-2.467 5.5-5.5 5.5h-10.955v13.523h20.913v6c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-71.334c0-2.209-1.792-4-4-4h-18.459c-5.721-28.721-10.128-58.486-13.022-80.258-0.962 0.198-1.947 0.37-2.957 0.514z"/><path d="m221.05 33.546c0.583-0.099 1.132-0.147 1.675-0.147h29.002c1.484-2.674 2.436-5.682 2.721-8.884 4.253-1.267 8.484-2.163 12.662-2.582 0.061-1.034 0.256-2.065 0.592-3.071-4.365 0.37-8.771 1.247-13.188 2.509-0.589-11.902-10.423-21.371-22.472-21.371-12.426 0-22.5 10.073-22.5 22.5 0 4.629 1.399 8.93 3.796 12.506 0.319 0.476 0.659 0.937 1.013 1.386 1.935-1.517 4.125-2.535 6.699-2.846z"/><path d="m205.96 52.587c-2.476 4.73-8.273 15.809-11.523 15.998-0.057-6e-3 -3.06 0.067-9.083-8.768-2.49-3.652-7.468-4.59-11.116-2.103-3.65 2.489-4.592 7.466-2.103 11.117 7.221 10.591 14.498 15.757 22.216 15.756 0.337 0 0.677-0.01 1.016-0.03 8.816-0.513 14.866-7.453 19.633-15.254v140.52c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-90.272h4.635v90.272c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-158.05c1.832 0.042 3.641 0.073 5.392 0.073 14.189 0 25.354-1.715 28.064-10.666 2.975-9.819-7.484-17.965-19.229-25.307-3.748-2.341-8.684-1.202-11.024 2.544-2.342 3.747-1.202 8.682 2.544 11.024 4.05 2.531 6.802 4.529 8.664 6.044-3.805 0.366-9.427 0.441-16.819 0.222-1.713-0.051-3.167-0.092-4.229-0.092-0.371 0-0.732 0.034-1.09 0.083h-38.635c-0.459 0-0.907 0.048-1.344 0.124-7.075 0.822-10.964 8.242-15.425 16.766z"/></svg>
-`;
-
-    //https://github.com/n3r4zzurr0/svg-spinners
-    const MY_SPINNER = `
-<svg width="120" height="120" stroke="#000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g><circle cx="12" cy="12" r="9.5" fill="none" stroke-width="3" stroke-linecap="round"><animate attributeName="stroke-dasharray" dur="1.5s" calcMode="spline" values="0 150;42 150;42 150;42 150" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="1.5s" calcMode="spline" values="0;-16;-59;-59" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/></circle><animateTransform attributeName="transform" type="rotate" dur="2s" values="0 12 12;360 12 12" repeatCount="indefinite"/></g></svg>
-`;
-    const $MYSPINNER = $('<div id="my-spinner"><div>' + MY_SPINNER + '</div></div>');
-
-    const DEFAULT_COLUMN_OPTS = [
-        {label:'Accomodation',
-         'daily-manifest-bookings':[{"id":"customer.email"},{"id":"startTime"},{"id":"endTime"},{"id":"checkinCheckout"},{"id":"note"},{"id":"fields.comments_or_additional_request"},{"id":"fields.group_name_1"},{"id":"statusId"},{"id":"bookingCode"},{"id":"parameters.twin"},{"id":"parameters.double"}],
-         'daily-manifest-guests':[{"id":"checkIn"},{"id":"firstName"},{"id":"lastName"},{"id":"fields.dietary_requirements"},{"id":"fields.accessibility_requirements"}],
-         categories:[3,10,26,33]
-        },
-        {label:'Catering',
-         'daily-manifest-bookings':[{"id":"startTime"},{"id":"endTime"},{"id":"parameters.attendee"},{"id":"statusId"},{"id":"note"},{"id":"customer.email"},{"id":"bookingCode"},{"id":"fields.comments_or_additional_request"}],
-         'daily-manifest-guests':[{"id":"firstName"},{"id":"lastName"},{"id":"fields.dietary_requirements"}],
-         categories:[34]
-        }
-    ];
-
-    //Unless there is an existing guest we can not retrive the guest form - staticly define the inputs we want to be able to specify in the import template
-    const GUEST_IMPORT_FIELDS = [{header:'Guest first name',formId:'guest_first_name'}, //Inbuilt - Required
-                                 {header:'Guest last name',formId:'guest_last_name'},   //Inbuilt - Required
-                                 {header:'Dietary requirements',formId:'dietary_requirements'},
-                                 {header:'Accessibility Requirements',formId:'accessibility_requirements'}];
-
-    //Attach the guest to the specified param in order of priority.
-    //Params can be applied to particular item IDs to give them priority for those items.
-    //Specifiying no item ids to match against the param will be checked against all items.
-    const GUEST_IMPORT_PARAMS = [{items:[],guest_type:'guestformtest'},{items:[],guest_type:'guest'}];
-
 
     ( //BASED ON: https://stackoverflow.com/questions/4232557/jquery-css-write-into-the-style-tag
         function( $$ ){
@@ -142,6 +83,726 @@ console.log('Hello world');
         }
     )($);
 
+    //================================ Helper functions ======================================
+
+    const CSV = (function(){
+        function getCsvExport_generic(url, extra_args){
+            const PROMISE = $.Deferred();
+
+            let data;
+            if(extra_args instanceof URLSearchParams){
+                data = extra_args;
+            }else{
+                data = new URLSearchParams(window.location.search);
+                if(!!extra_args){
+                    for(const [key,value] of Object.entries(extra_args)){
+                        switch(true){
+                            case(Array.isArray(value)):
+                                data.delete(key);
+                                for(const arValue of value){
+                                    data.append(key, arValue);
+                                }
+                                break;
+                            case(DATES.isValid(value)):
+                                data.set(key,DATES.toYYYYMMDD(value));
+                                break;
+                            case(value === undefined):
+                                break;
+                            default:
+                                data.set(key, value);
+                        }
+                    }
+                }
+            }
+
+            $.get({
+                url:'/get/export/',
+                data:data.toString(),
+                success:(data_, result_, xhr_,)=>{
+                    const $frame = $(data_);
+                    const $form = $frame.find('#export_form').eq(0);
+
+                    $form.find('#rpt_name').val(`report`);
+                    $form.find('#format').val('csv');
+                    $form.find('#columns').val('*');
+                    $form.find('#destination').val('desktop');
+                    $form.find('#iso_dates').prop('checked',true);
+
+                    const formData = $form.serialize();
+
+                    $.get({
+                        url:url,
+                        data: formData,
+                        success: (data__, result__, xhr__)=>PROMISE.resolve(data__, result__, xhr__, formData),
+                        dataType:'text'
+                    });
+                },
+                dataType:'html'
+            });
+
+            return PROMISE.promise();
+        }
+
+        //================================== CSV Parsing =========================================
+        function BADLY_ITERATE_GENERIC_CSV(data, callback){
+            const rows = [];
+            let row = [];
+
+            const l = data.length;
+            let R = 0;
+            let i = 0;
+            let currentPart = '';
+            let isInQuotedPart = false;
+            let havePushedLastPart = false;
+            let lastChar;
+
+            //let previousChar = undefined;
+            while(i < l){
+                const currentChar = data.charAt(i);
+                const nextChar = data.charAt(i+1);
+                havePushedLastPart = false;
+
+                switch(currentChar){
+                    case '"':
+                        switch(true){
+                                //If we've encountered a double quote and we are not already in a quoted section, enter the quoted section
+                            case (!isInQuotedPart):
+                                isInQuotedPart = true;
+                                break;
+
+                                //If the immediatly next charcter is a double quote then the quote is escaped
+                            case (nextChar == '"'):
+                                currentPart += currentChar;
+                                i++; //Skip the escaped double quote
+                                break;
+
+                                //In any other case exit the quoted section
+                            default:
+                                isInQuotedPart = false;
+                        }
+                        break;
+                    case ',':
+                        if(isInQuotedPart){
+                            currentPart += currentChar
+                        }else{
+                            row.push(currentPart);
+                            currentPart = '';
+                        }
+                        break;
+                    case '\r':
+                    case '\n':
+                        if(isInQuotedPart){
+                            currentPart += currentChar;
+                        }else{
+                            row.push(currentPart);
+                            havePushedLastPart = true;
+
+                            callback(R, row);
+                            R++;
+
+                            row = [];
+                            currentPart = '';
+                            while(/\r|\n/.test(data.charAt(i))){ //Skip all new line characters (including the current one)
+                                i++
+                            }
+                            i--; //Rewind one character
+                        }
+                        break;
+                    default:
+                        currentPart += currentChar;
+                }
+                i++;
+            }//Next char
+            if(row.length > 0){
+                if(!havePushedLastPart){row.push(currentPart);}
+
+                callback(R,row);
+                R++;
+
+                row = [];
+            }
+
+            return R
+        }
+
+        function BADLY_PARSE_CSV(data){
+            let headers;
+            const output = [];
+
+            function CB(index, row){
+                if(index === 0){
+                    headers = row;
+                }else{
+                    const R = row;
+                    for(var i=0;i < headers.length; i++){
+                        R[headers[i]] = row[i];
+                    }
+                    output.push(R);
+                }
+            }
+
+            BADLY_ITERATE_GENERIC_CSV(data, CB);
+
+            return output;
+        }
+
+        //================================= CSV converting =======================================
+
+        function TABLE_REMOVE_DUPLICATES(table){
+            const l = table.length;
+            const m = table[0].length;
+            const cleaned = [];
+            let test = false;
+            for(var i = 1; i < l; i++){
+                const a = table[i][0];
+                searchCleaned: {
+                    for(var j = 0; j < cleaned.length; j++){
+                        test = false;
+                        if(cleaned[j][0] === a){
+                            test = true;
+                            for(var k = 1; k < m; k++){
+                                test = (test && (table[i][k] === cleaned[j][k]));
+                            }
+                            if(test){break searchCleaned;} //If we've found a dupicate we can exit early.
+                        }
+                    }
+                }
+                if(!test){
+                    cleaned.push(table[i]);
+                }
+            }
+
+            return cleaned;
+        }
+
+        function CSV_2_TABLE(data,headers){
+            return PARSED_2_TABLE(BADLY_PARSE_CSV(data), headers);
+        }
+        function CSV_2_HTML(data,headers){
+            return TABLE_2_HTML(TABLE_REMOVE_DUPLICATES(CSV_2_TABLE(data, headers)), headers);
+        }
+
+        function PARSED_2_TABLE(parsed, headers){
+            const rx = /\{(.+?)\}/ig;
+            const isWhiteRx = /^\s+$/;
+            const isNonGuest = /^\s*Guest\s*#\s*\d+\s*$/;
+
+            const outputArray = [];
+
+            outputArray.push(headers.map((h)=>{if(Array.isArray(h)){return h[1];}else{return h;};}));
+
+            for(var i = 1; i < parsed.length; i++){ //For each row in our data
+                const line = parsed[i];
+                const output_row = [];
+
+                for(var j = 0; j < headers.length; j++){ //For each header
+                    let header = headers[j]; //This is our header entry, it should be an array: ['<HEADER TITLE>',<HEADER VALUE>]
+                    if(!Array.isArray(header)){ //If it's not an array, make it one with an empty title
+                        header = ['', header];
+                    }
+
+                    //const headerTitle = header[0];
+                    let headerValue = header[1];
+                    if(!Array.isArray(headerValue)){ //Header values may be an array of values, if it's not already make it an array.
+                        headerValue = [headerValue];
+                    }
+
+                    let processedHeaderValues = [];
+                    for(var k=0; k < headerValue.length; k++){ //Go through each header value
+                        const hv = headerValue[k];
+                        let workingHeaderLabel = '';
+                        let workingHeaderValue = '';
+
+                        if(Array.isArray(hv)){ //If our header value is an array it is defining a label and a value
+                            workingHeaderLabel = hv[0];
+                            workingHeaderValue = hv[1];
+                        }else{
+                            workingHeaderValue = hv;
+                        }
+
+                        if(workingHeaderValue instanceof Function){
+                            workingHeaderValue = workingHeaderValue(i, j, k, hv, line);
+                        }else if(typeof workingHeaderValue === 'string' || workingHeaderValue instanceof String){
+                            const matches = workingHeaderValue.matchAll(rx);
+                            for(const M of matches){
+                                const v = line[M[1]];
+                                if(v === undefined){
+                                    workingHeaderValue = workingHeaderValue.replace(M[0],'');
+                                }else{
+                                    workingHeaderValue = workingHeaderValue.replace(M[0],v);
+                                }
+                            }
+                        }
+
+                        if((workingHeaderValue != '') && (!isWhiteRx.test(workingHeaderValue)) && (!isNonGuest.test(workingHeaderValue))){
+                            processedHeaderValues.push([workingHeaderLabel,workingHeaderValue]);
+                        }
+
+                    } //End for each header value.
+
+                    let headerVal = '';
+                    if(processedHeaderValues.length === 1){ //If we only have 1 processed header value we don't show it with a label or new line.
+                        headerVal = processedHeaderValues[0][1];
+                    }else{
+                        //If we have multiple processed header values, we prepend the label to the header value before appending it top the output,
+                        //if there is no label, then only append the value
+                        for(const hv of processedHeaderValues){
+                            if(hv[0] !== ''){
+                                headerVal += (hv[0] + ':&nbsp' + hv[1] + '<br>');
+                            }else{
+                                headerVal += (hv[1] + '<br>');
+                            }
+                        }
+                    }
+
+                    output_row.push(headerVal);
+                } //End for each header
+                outputArray.push(output_row);
+
+            }
+
+            return outputArray;
+        }
+        function PARSED_2_HTML(parsed, headers){
+            return TABLE_2_HTML(TABLE_REMOVE_DUPLICATES(PARSED_2_TABLE(parsed,headers)), headers);
+        }
+        function TABLE_2_HTML(table, headers){
+            let out = '<table><thead><tr>';
+            for(var h = 0; h < headers.length; h++){
+                if(Array.isArray(headers[h])){
+                    out += ('<th>' + headers[h][0] + '</th>');
+                }else{
+                    out += ('<th>' + headers[h] + '</th>');
+                }
+            }
+            out += '</tr></thead><tbody>';
+
+            for(var i = 1; i < table.length; i++){
+                out += '<tr>';
+                const row = table[i];
+                for(const cell of row){
+                    out += ('<td>' + cell + '</td>');
+                }
+                out += '</tr>';
+            }
+            out += '</tobody></table>';
+
+            return out;
+        }
+
+        function TABLE_2_QUOTEDCSV(table){
+            let csv = "";
+            for(const row of table){
+                for(const cell of row){
+                    if((cell instanceof String) || (typeof cell === 'string')){
+                        csv += `"${cell.replace('"','""')}",`;
+                    }else if(cell === undefined){
+                        csv += '"",';
+                    }else{
+                        csv += `"${cell}",`;
+                    }
+                }
+                csv = csv.slice(0,-1) + '\r\n';
+            }
+            return csv.slice(0,-2);
+        }
+
+        return {
+            export:getCsvExport_generic,
+
+            parse:BADLY_PARSE_CSV,
+            iterate:BADLY_ITERATE_GENERIC_CSV,
+
+            parseToTable:CSV_2_TABLE,
+            parseToHTML:CSV_2_HTML,
+
+            toTable:PARSED_2_HTML,
+            toHTML:PARSED_2_HTML,
+
+            tableToCsv:TABLE_2_QUOTEDCSV,
+        }
+    })();
+
+    const DATES = (function(){
+        function toYYYYMMDD(dte){
+            const YYYY= `${dte.getFullYear()}`;
+            const MM = `${dte.getMonth() + 1}`.padStart(2,'0');
+            const DD = `${dte.getDate()}`.padStart(2,'0');
+
+            return `${YYYY}-${MM}-${DD}`;
+        }
+
+        function daysBetween(startDate, endDate) {
+            function treatAsUTC(date) {
+                const result = new Date(date);
+                result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
+                return result;
+            }
+            const millisecondsPerDay = 24 * 60 * 60 * 1000;
+            return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
+        }
+
+        function isValidDate(ob){
+            if(Object.prototype.toString.call(ob) === '[object Date]'){
+                if(!isNaN(ob)){
+                    return true
+                }
+            }
+            return false;
+        }
+
+        return {
+            toYYYYMMDD:toYYYYMMDD,
+            daysBetween:daysBetween,
+            isValid:isValidDate,
+        }
+    })();
+
+    const PAGEUTILS = (function(){
+        function getContentDiv(){
+            return $('#content');
+        }
+        function getMainPageContentAfterHeaders(){
+            const $content = getContentDiv().children().eq(0);
+            return $content.children('div.page-lg').eq(0);
+        }
+        function findPageTitle(){
+            const $content = getContentDiv().children().eq(0);
+            const $titleHeaders = $content.find('div[class^="PageHeader"][class*="Title"]');
+            const $pagelg = $titleHeaders.find('div.page-lg');
+            const $title = $pagelg.find('div[class^="Title"]');
+
+            return $title.eq(0);
+        }
+        function findPrimaryActionsDiv(){
+            const $content = getContentDiv().children().eq(0);
+            const $actionBar = $content.find('div[class^="PageHeader"][class*="ActionsBar"]');
+            const $pagelg = $actionBar.find('div.page-lg');
+            const $primaryActions = $pagelg.find('div[class^="PageHeader"][class*="primaryActions"]');
+
+            return $primaryActions.eq(0);
+        }
+        function findSecondaryActionsDiv(){
+            const $content = getContentDiv().children().eq(0);
+            const $actionBar = $content.find('div[class^="PageHeader"][class*="ActionsBar"]');
+            const $pagelg = $actionBar.find('div.page-lg');
+            const $primaryActions = $pagelg.find('div[class^="PageHeader"][class*="secondaryActions"]');
+
+            return $primaryActions.eq(0);
+        }
+
+        return {
+            $contentDiv:getContentDiv,
+            $mainPageContentAfterHeaders:getMainPageContentAfterHeaders,
+            $pageTitle:findPageTitle,
+            $primaryActionsDiv:findPrimaryActionsDiv,
+            $secondaryActionsDiv:findSecondaryActionsDiv,
+        }
+    })();
+
+    const SPINNER = (function(){
+        //https://github.com/n3r4zzurr0/svg-spinners
+        const MY_SPINNER = `
+<svg width="120" height="120" stroke="#000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g><circle cx="12" cy="12" r="9.5" fill="none" stroke-width="3" stroke-linecap="round"><animate attributeName="stroke-dasharray" dur="1.5s" calcMode="spline" values="0 150;42 150;42 150;42 150" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="1.5s" calcMode="spline" values="0;-16;-59;-59" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/></circle><animateTransform attributeName="transform" type="rotate" dur="2s" values="0 12 12;360 12 12" repeatCount="indefinite"/></g></svg>
+`;
+        const $MYSPINNER = $('<div id="my-spinner"><div>' + MY_SPINNER + '</div></div>');
+
+        function showSpinner(){
+            if($('#my-spinner').length === 0){
+                const $page = $('#page');
+                $page.prepend($MYSPINNER);
+            }
+            $MYSPINNER.show();
+        }
+        function hideSpinner(){
+            if($('#my-spinner').length !== 0){
+                $MYSPINNER.hide();
+            }
+        }
+
+        return {
+            show:showSpinner,
+            hide:hideSpinner,
+        }
+    })();
+
+    const DAILYMANIFEST = (function(){
+        let needRevert = false;
+
+        function replaceDailyManifestWith($element, title){
+            const $pageTitle = PAGEUTILS.$pageTitle()
+            if(needRevert === false){
+                $pageTitle.data('html',$pageTitle.html());
+            }
+            $pageTitle.text(title); //Change page title
+
+            if(needRevert === false){
+                //Find the actions bar where the date selectors exist and hide
+                //any nodes that should be hidden when printing.
+                const $actions = PAGEUTILS.$primaryActionsDiv();
+                const $printViewHidden = $actions.find('.printViewHidden');
+                $printViewHidden.hide();
+
+                //Display the text version.
+                const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
+                $text.show(); //Make sure the text version is shown.
+            }
+
+            const $page = PAGEUTILS.$mainPageContentAfterHeaders();
+            if(needRevert === false){
+                $page.data('previouslyVisable', $page.children(':visible'));
+                $page.data('previouslyVisable').hide(); //Emptying the div breaks things
+            }else{
+                $page.data('element').remove();
+            }
+            $page.data('element', $element);
+            $page.append($element);
+
+            needRevert = true;
+        }
+        function revertDailyManifest($element){
+            if(needRevert === false){return;}
+
+            const $actions = PAGEUTILS.$primaryActionsDiv();
+            const $printViewHidden = $actions.find('.printViewHidden');
+            $printViewHidden.show();
+
+            const $page = PAGEUTILS.$mainPageContentAfterHeaders();
+            $page.data('element').remove();
+            $page.data('previouslyVisable').show();
+            $page.removeData(['previouslyVisable', 'element']);
+
+            //Display the text version.
+            const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
+            $text.hide(); //Make sure the text version is hidden.
+
+            const $pageTitle = PAGEUTILS.$pageTitle()
+            $pageTitle.html($pageTitle.data('html')); //Change page title
+            $pageTitle.removeData('html');
+            needRevert = false;
+        }
+
+        function getDailyManifestExport_Checkins(dte, args){
+            const a = Object.assign(args || {}, {timeframe:'starting',hideCanceled:'true',date:dte});
+            return CSV.export('/booking/manifest/', a);
+        }
+        function getDailyManifestExport_Checkouts(dte, args){
+            const a = Object.assign(args || {}, {timeframe:'ending',hideCanceled:'true',date:dte});
+            return CSV.export('/booking/manifest/', a);
+        }
+        function getDailyManifestExport_Ongoing(dte, args){
+            const a = Object.assign(args || {}, {timeframe:'ongoing',hideCanceled:'true',date:dte});
+            return CSV.export('/booking/manifest/', a);
+        }
+
+        //-------- utility functions for table generation
+        const MAX_LOOK_AHEAD = 30;
+
+        function ManifestRow_SingleTwinDouble(row){
+            switch(true){
+                case(row['Upgrade to a Twin room'] == '1'):
+                    return 'Twin';
+                case(row['Upgrade to a Double room'] == '1'):
+                    return 'Double';
+                case(row['Single'] == '1'):
+                    return 'Single';
+                default:
+                    return `${row['No of Guests']} beds`;
+            }
+        }
+        function ManifestRow_RoomType(row){
+            const status = row.Status.toLowerCase();
+            switch(true){
+                case(status == 'trustee / vip'):
+                    return `VIP!! ${ManifestRow_SingleTwinDouble(row)}`;
+                    break;
+                case(status == 'vols'):
+                    return `${ManifestRow_SingleTwinDouble(row)} (VOL)`;
+                    break;
+                case(status == 'gse tutor'):
+                    return 'GSE (Tutor)';
+                    break;
+                case(status == 'm\'arch 5th yrs'):
+                    return 'GSE (Student)';
+                    break;
+                case(status == 'gse'):
+                    return 'GSE (Student)';
+                    break;
+                case(status == 'gse provisional'):
+                    return 'GSE (Unalocated?)';
+                    break;
+                case(status == 'staff'):
+                    return `${ManifestRow_SingleTwinDouble(row)} (Staff)`;
+                    break;
+                case(status == 'schools & groups'):
+                    return `${ManifestRow_SingleTwinDouble(row)} (Sch'l / group)`;
+                    break;
+                case(status == 'prov schools & group'):
+                    return `${ManifestRow_SingleTwinDouble(row)} (Provisional Sch'l / group)`;
+                    break;
+                case(status == 'engagement'):
+                    return `${ManifestRow_SingleTwinDouble(row)} (Engagement group)`;
+                    break;
+                case(status == 'prov engagement'):
+                    return `${ManifestRow_SingleTwinDouble(row)} (Provisional engagement group)`;
+                    break;
+                case(status == 'sc'):
+                    return `${ManifestRow_SingleTwinDouble(row)} (Short Course)`;
+                    break;
+                default:
+                    return ManifestRow_SingleTwinDouble(row);
+                    break;
+            }
+        }
+
+        function ManifestRow_GetDaysTillNextCheckIn(row){
+            function getDate(row,start_end){
+                const d = row[`${start_end} Date`];
+                const t = row[`${start_end} Time`];
+                switch(true){
+                    case(start_end == 'Start'):
+                        if(t == ''){
+                            return new Date(d);
+                        }else{
+                            return new Date(`${d} ${t}`);
+                        }
+                        break;
+                    case(start_end == 'End'):
+                        if(t == ''){
+                            var k = new Date(d);
+                            k.setDate(k.getDate()+1);
+                            return k
+                        }else{
+                            return new Date(`${d} ${t}`);
+                        }
+                        break;
+                    default:
+                        throw Error('Invalid start_end value');
+                }
+            }
+
+            if(!(!!row.Next)){
+                return -1;
+            }
+
+            const cod = getDate(row, 'End');
+            const cid = getDate(row.Next, 'Start');
+
+            return Math.trunc(DATES.daysBetween(cod, cid));
+        }
+        function ManifestRow_RoomType_next(row){
+            if(!!row.Next){
+                return ManifestRow_RoomType(row.Next);
+            }else{
+                return '';
+            }
+        }
+        function ManifestRow_Accessability_next(row){
+            if(!!row.Next){
+                return row.Next['Accessibility requirements'];
+            }else{
+                return '';
+            }
+        }
+
+        function ManifestRow_DaysTillNext(row){
+            const days = ManifestRow_GetDaysTillNextCheckIn(row);
+            switch(true){
+                case (days < 0):
+                    return `Nothing in the next ${MAX_LOOK_AHEAD} days`;
+                case (days == 0):
+                    return `Today!`;
+                case (days == 1):
+                    return `Tomorrow!`;
+                case (days > 0):
+                    return `${days} days`;
+            }
+        }
+        //--------
+
+        return {
+            replaceWith: replaceDailyManifestWith,
+            revertReplace: revertDailyManifest,
+
+            export:{
+                checkins:getDailyManifestExport_Checkins,
+                checkouts:getDailyManifestExport_Checkouts,
+                ongoing:getDailyManifestExport_Ongoing,
+                generic:(args)=>{return CSV.export('/booking/manifest/',args);},
+                row_utils:{
+                    singleTwinDouble:ManifestRow_SingleTwinDouble,
+                    roomType:ManifestRow_RoomType,
+                },
+            },
+
+            changeOverReportUtils:{
+                max_look_ahead:MAX_LOOK_AHEAD,
+                daysTillNext:ManifestRow_DaysTillNext,
+                roomTypeNext:ManifestRow_RoomType_next,
+                accessabilityReqNext:ManifestRow_Accessability_next,
+            }
+        }
+    })();
+
+    //================================ Constants ======================================
+
+    //                     Column Header,  Column Value(s) [Label,Value]
+    const OVERNIGHT_HEADERS = [['Room', '{Product Name}'],
+                               ['Checkin Status',[['Booking','{Check In / Out}'],['Guest','{Guest Check In Status}']]],
+                               ['Accessability needs','{Accessibility requirements}']
+                              ];
+
+    const CHANGEOVER_HEADERS = [['Room', '{Product Name}'],
+                                ['Next checkin',(i,j,k,hv,row)=>DAILYMANIFEST.changeOverReportUtils.daysTillNext(row)],
+                                ['Single / Twin / Double', (i,j,k,hv,row)=>DAILYMANIFEST.changeOverReportUtils.roomTypeNext(row)],
+                                ['Accessability needs',(i,j,k,hv,row)=>DAILYMANIFEST.changeOverReportUtils.accessabilityReqNext(row)]
+                               ];
+
+    //https://www.iconpacks.net/free-icon/moon-2287.html
+    const MOON_ICON = `
+<svg width="724" height="24" version="1.1" viewBox="0 0 713.75 702.37" xmlns="http://www.w3.org/2000/svg"><g transform="translate(200.55 195)" stroke-linecap="round"><path d="m110.09 507.37c-171.29 0-310.64-139.35-310.64-310.64 0-145.25 98.726-269.64 240.08-302.5 5.4641-1.2609 11.095 1.4671 13.474 6.5585 2.3791 5.0993 0.85649 11.166-3.6401 14.537-64.665 48.534-101.75 122.66-101.75 203.38 0 140.13 114 254.13 254.14 254.13 66.187 0 128.89-25.369 176.56-71.437 4.0445-3.9176 10.278-4.4569 14.941-1.2847 4.6631 3.1563 6.4633 9.1438 4.33 14.362-48.058 117.18-160.89 192.89-287.49 192.89zm-116.63-572.84c-102.41 45.14-170.23 146.5-170.23 262.2 0 158.16 128.68 286.85 286.85 286.85 98.488 0 187.97-49.637 240.24-129.99-44.109 28.018-95.316 43.046-148.58 43.046-153.25 0-277.93-124.67-277.93-277.92 0-69.146 24.878-133.87 69.645-184.18z"/><path d="m115.74 214.67c-2.4664 0-4.9169-0.76926-6.9946-2.2681-3.6639-2.6646-5.4958-7.1691-4.7345-11.642l11.23-65.466-47.567-46.361c-3.2436-3.1563-4.4093-7.8908-3.0136-12.197 1.4037-4.3062 5.1231-7.4467 9.6038-8.097l65.735-9.5562 29.398-59.566c1.9985-4.0604 6.1302-6.6299 10.666-6.6299 4.5362 0 8.668 2.5695 10.666 6.6299l29.398 59.566 65.735 9.5562c4.4728 0.6503 8.2001 3.7908 9.6038 8.097 1.3958 4.3062 0.22998 9.0328-3.0136 12.197l-47.567 46.369 11.23 65.466c0.76925 4.4648-1.0706 8.9773-4.7345 11.642-3.6718 2.6646-8.5173 3.0136-12.53 0.90407l-58.788-30.913-58.788 30.913c-1.7447 0.90407-3.6401 1.3561-5.5354 1.3561zm64.324-57.615c1.9033 0 3.7987 0.45996 5.5354 1.364l42.991 22.602-8.208-47.876c-0.65823-3.8542 0.61857-7.7956 3.426-10.532l34.783-33.903-48.074-6.9867c-3.8701-0.56306-7.2246-2.9977-8.9535-6.503l-21.499-43.562-21.492 43.562c-1.7368 3.5053-5.0834 5.9478-8.9535 6.503l-48.074 6.9867 34.783 33.903c2.8074 2.736 4.0842 6.6695 3.426 10.532l-8.2159 47.876 42.991-22.602c1.7368-0.90407 3.6321-1.364 5.5354-1.364z"/><path d="m266.32-21.305c-2.4664 0-4.9169-0.76925-6.9946-2.276-3.6639-2.6567-5.4958-7.1691-4.7345-11.634l8.2477-48.074-34.918-34.037c-3.2436-3.1642-4.4093-7.8908-3.0136-12.197 1.4037-4.3062 5.1231-7.4467 9.6038-8.097l48.257-7.0105 21.595-43.736c1.9985-4.0604 6.1302-6.6298 10.666-6.6298 4.5283 0 8.668 2.5695 10.666 6.6298l21.587 43.728 48.257 7.0105c4.4728 0.6503 8.2001 3.7908 9.6038 8.097 1.3958 4.3062 0.22998 9.0328-3.0136 12.197l-34.918 34.037 8.2477 48.074c0.76925 4.4648-1.0706 8.9693-4.7345 11.634-3.6639 2.6646-8.5173 3.0136-12.53 0.90407l-43.157-22.689-43.165 22.689c-1.7526 0.92786-3.6559 1.3799-5.5513 1.3799zm-4.5283-96.228 22.134 21.579c2.8074 2.736 4.0842 6.6695 3.426 10.532l-5.2262 30.477 27.368-14.386c3.4735-1.824 7.6132-1.8161 11.071 0l27.36 14.386-5.2262-30.477c-0.65822-3.8542 0.61858-7.7956 3.426-10.532l22.134-21.579-30.588-4.449c-3.8701-0.56306-7.2246-2.9977-8.9535-6.5109l-13.688-27.725-13.696 27.733c-1.7288 3.5052-5.0834 5.9478-8.9535 6.503z"/><path d="m401.23 233.19c-2.4664 0-4.9169-0.76925-6.9946-2.2681-3.6639-2.6646-5.4958-7.1691-4.7345-11.642l6.2412-36.393-26.44-25.774c-3.2436-3.1642-4.4093-7.8908-3.0136-12.197 1.4037-4.3062 5.1231-7.4467 9.6038-8.097l36.536-5.3055 16.353-33.118c1.9985-4.0604 6.1302-6.6299 10.666-6.6299 4.5283 0 8.668 2.5695 10.666 6.6299l16.345 33.11 36.543 5.3055c4.4728 0.6503 8.2001 3.7908 9.6038 8.097 1.4037 4.3062 0.22999 9.0328-3.0136 12.197l-26.448 25.774 6.2492 36.401c0.76926 4.4648-1.0706 8.9773-4.7345 11.642-3.6718 2.6646-8.5252 3.0056-12.53 0.90407l-32.681-17.185-32.681 17.185c-1.7447 0.912-3.6401 1.364-5.5354 1.364zm1.943-76.291 13.656 13.315c2.8074 2.736 4.0842 6.6695 3.426 10.532l-3.2198 18.803 16.884-8.8821c3.4735-1.8161 7.6053-1.8161 11.071 0l16.884 8.8742-3.2277-18.795c-0.65823-3.8621 0.61857-7.7956 3.426-10.532l13.664-13.315-18.882-2.7439c-3.8701-0.56306-7.2246-2.9977-8.9535-6.5109l-8.438-17.106-8.4459 17.106c-1.7288 3.5053-5.0834 5.9478-8.9535 6.503z"/></g></svg>
+`;
+
+    //https://www.iconpacks.net/free-icon/arrow-up-2818.html
+    const UP_ARROW = `
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="256" height="256" viewBox="0 0 256 256" xml:space="preserve">
+<g style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;" transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
+	<path d="M 76.714 31.655 c 0 0.598 -0.228 1.196 -0.683 1.651 l -9.44 9.44 c -0.441 0.441 -1.027 0.684 -1.651 0.684 s -1.21 -0.242 -1.651 -0.684 l -9.277 -9.277 v 54.195 c 0 1.288 -1.048 2.335 -2.335 2.335 H 38.325 c -1.288 0 -2.335 -1.048 -2.335 -2.335 V 33.469 l -9.278 9.277 c -0.441 0.441 -1.027 0.684 -1.651 0.684 c -0.624 0 -1.21 -0.242 -1.651 -0.684 l -9.44 -9.44 c -0.911 -0.91 -0.911 -2.393 0 -3.303 l 29.329 -29.33 c 0.46 -0.459 1.078 -0.697 1.74 -0.672 c 0.585 -0.025 1.203 0.213 1.663 0.672 l 29.33 29.33 C 76.487 30.459 76.714 31.057 76.714 31.655 z M 37.99 87.664 c 0 0.185 0.15 0.335 0.335 0.335 h 13.351 c 0.185 0 0.335 -0.15 0.335 -0.335 V 28.641 l 12.691 12.691 c 0.131 0.131 0.344 0.131 0.475 0 l 9.44 -9.44 c 0.131 -0.131 0.131 -0.344 0 -0.475 L 45.289 2.088 C 45.211 2.01 45.109 1.997 45.038 2 c -0.147 -0.003 -0.249 0.011 -0.327 0.09 L 15.383 31.418 c -0.131 0.131 -0.131 0.344 0 0.475 l 9.44 9.44 c 0.131 0.131 0.343 0.131 0.474 0 L 37.99 28.641 V 87.664 z" style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;" transform=" matrix(1 0 0 1 0 0) " stroke-linecap="round"/>
+</g>
+</svg>
+`;
+
+    /*
+    changing bed sheet by Gan Khoon Lay from <a href="https://thenounproject.com/browse/icons/term/changing-bed-sheet/" target="_blank" title="changing bed sheet Icons">Noun Project</a> (CC BY 3.0)
+    */
+    const BED_ICON = `
+<svg width="326" height="222.18" version="1.1" viewBox="0 0 326 222.18" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"><path d="m43.376 190.66c-3.033 0-5.5-2.467-5.5-5.5v-27.645h-5.876v-87.999c0-2.209-1.792-4-4-4h-24c-2.209 0-4 1.791-4 4v140.67c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-6h179v-13.523z"/><path d="m189.56 58.848c3.948-2.166 8.101-4.635 12.398-7.251 0.152-0.287 0.3-0.566 0.457-0.865 0.77-1.471 1.534-2.925 2.311-4.341-5.946 3.645-11.66 7.127-16.963 10.02 0.319 0.364 0.618 0.748 0.895 1.153 0.312 0.458 0.612 0.882 0.902 1.284z"/><path d="m92.188 134.32c-0.701 0.991-1.393 1.993-2.08 3h-46.732c-1.378 0-2.5 1.121-2.5 2.5v45.334c0 1.379 1.122 2.5 2.5 2.5h167.62v-28.079c-4.971-1.646-9.922-3.351-14.838-5.047-24.058-8.303-48.934-16.888-72.887-16.888-12.415 0-23.689 2.244-34.305 6.846 21.963-34.584 53.021-59.959 79.109-74.689-0.472-0.919-0.816-1.877-1.033-2.853-24.336 13.667-53.005 36.507-74.853 67.376z"/><path d="m287.56 55.102c3.873 29.122 10.442 72.451 19.23 108.55-10.516 4.865-21.587 7.435-33.705 7.832v16.169h10.955c1.378 0 2.5-1.121 2.5-2.5v-12.037c1.006-0.177 2.006-0.37 3-0.58v12.617c0 3.033-2.467 5.5-5.5 5.5h-10.955v13.523h20.913v6c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-71.334c0-2.209-1.792-4-4-4h-18.459c-5.721-28.721-10.128-58.486-13.022-80.258-0.962 0.198-1.947 0.37-2.957 0.514z"/><path d="m221.05 33.546c0.583-0.099 1.132-0.147 1.675-0.147h29.002c1.484-2.674 2.436-5.682 2.721-8.884 4.253-1.267 8.484-2.163 12.662-2.582 0.061-1.034 0.256-2.065 0.592-3.071-4.365 0.37-8.771 1.247-13.188 2.509-0.589-11.902-10.423-21.371-22.472-21.371-12.426 0-22.5 10.073-22.5 22.5 0 4.629 1.399 8.93 3.796 12.506 0.319 0.476 0.659 0.937 1.013 1.386 1.935-1.517 4.125-2.535 6.699-2.846z"/><path d="m205.96 52.587c-2.476 4.73-8.273 15.809-11.523 15.998-0.057-6e-3 -3.06 0.067-9.083-8.768-2.49-3.652-7.468-4.59-11.116-2.103-3.65 2.489-4.592 7.466-2.103 11.117 7.221 10.591 14.498 15.757 22.216 15.756 0.337 0 0.677-0.01 1.016-0.03 8.816-0.513 14.866-7.453 19.633-15.254v140.52c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-90.272h4.635v90.272c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-158.05c1.832 0.042 3.641 0.073 5.392 0.073 14.189 0 25.354-1.715 28.064-10.666 2.975-9.819-7.484-17.965-19.229-25.307-3.748-2.341-8.684-1.202-11.024 2.544-2.342 3.747-1.202 8.682 2.544 11.024 4.05 2.531 6.802 4.529 8.664 6.044-3.805 0.366-9.427 0.441-16.819 0.222-1.713-0.051-3.167-0.092-4.229-0.092-0.371 0-0.732 0.034-1.09 0.083h-38.635c-0.459 0-0.907 0.048-1.344 0.124-7.075 0.822-10.964 8.242-15.425 16.766z"/></svg>
+`;
+
+    const DEFAULT_COLUMN_OPTS = [
+        {label:'Accomodation',
+         'daily-manifest-bookings':[{"id":"customer.email"},{"id":"startTime"},{"id":"endTime"},{"id":"checkinCheckout"},{"id":"note"},{"id":"fields.comments_or_additional_request"},{"id":"fields.group_name_1"},{"id":"statusId"},{"id":"bookingCode"},{"id":"parameters.twin"},{"id":"parameters.double"}],
+         'daily-manifest-guests':[{"id":"checkIn"},{"id":"firstName"},{"id":"lastName"},{"id":"fields.dietary_requirements"},{"id":"fields.accessibility_requirements"}],
+         categories:[3,10,26,33]
+        },
+        {label:'Catering',
+         'daily-manifest-bookings':[{"id":"startTime"},{"id":"endTime"},{"id":"parameters.attendee"},{"id":"statusId"},{"id":"note"},{"id":"customer.email"},{"id":"bookingCode"},{"id":"fields.comments_or_additional_request"}],
+         'daily-manifest-guests':[{"id":"firstName"},{"id":"lastName"},{"id":"fields.dietary_requirements"}],
+         categories:[34]
+        }
+    ];
+
+    //Unless there is an existing guest we can not retrive the guest form - staticly define the inputs we want to be able to specify in the import template
+    const GUEST_IMPORT_FIELDS = [{header:'Guest first name', formId:'guest_first_name'}, //Inbuilt - Required
+                                 {header:'Guest last name', formId:'guest_last_name'},   //Inbuilt - Required
+                                 {header:'Dietary requirements', formId:'dietary_requirements'},
+                                 {header:'Accessibility Requirements', formId:'accessibility_requirements'}];
+
+    //Attach the guest to the specified param in order of priority.
+    //Params can be applied to particular item IDs to give them priority for those items.
+    //Specifiying no item ids to match against the param will be checked against all items.
+    const GUEST_IMPORT_PARAMS = [{items:[],guest_type:'guestformtest'},{items:[],guest_type:'guest'}];
+
     const MY_CSS = `
 table.scriptTable{
     border:1px solid black;
@@ -188,13 +849,22 @@ table.scriptTable.guests td:not([class]):first-child {
     padding-left:0.5rem;
 }
 
-#changeoverTable tr td:first-of-type span{
-    float:right;
-    margin-right: 1em;
+
+#changeoverTable thead th:nth-of-type(1){
+    border-right:none;
 }
-#changeoverTable tr th:first-of-type span{
-    float:right;
-    margin-right: 1em;
+#changeoverTable thead th:nth-of-type(2){
+    width:1em;
+    text-align:right;
+    border-left:none;
+    padding-right:1em;
+    white-space: nowrap;
+}
+#changeoverTable tr td:nth-of-type(2){
+    text-align:right;
+    border-left:none;
+    padding-right:1em;
+    white-space: nowrap;
 }
 
 #my-spinner{
@@ -241,404 +911,15 @@ a.scriptGuestBtn{
 #sidebar-wrapper .btn.importBtn{
     margin-top:2px;
 }
-
-    `;
+`;
 
     $.cssStyleSheet.createSheet(MY_CSS);
 
-    //================================== CSV Parsing =========================================
-    function BADLY_PARSE_QUOTED_CSV_LINE(line){
-        if(!(!!line)){return;}
+    //========================================================================================
 
-        const outputAr = [];
-        let inPart = false
-        let currentPart = "";
-
-        line += ',';
-        let i = 0;
-        const l = line.length;
-        while(i < l){
-            const chr = line.charAt(i);
-            const nextChr = line.charAt(i+1);;
-
-            switch(chr){
-                case '"':
-                    if(!inPart){
-                         inPart = true;
-                    }else{
-                        //If we are in a part and the next character after the current double quote is a double qutoe,
-                        //then the double quote is escaped and should be considered a single double quote
-                        if(nextChr === '"'){
-                            i++; //Skip the next character
-                            currentPart += chr;
-                        }else{
-                            inPart = false;
-                        }
-                    }
-                    break;
-                case ',':
-                    if(inPart){
-                        currentPart += chr;
-                    }else{
-                        outputAr.push(currentPart);
-                        currentPart = '';
-                    }
-                    break;
-                default:
-                    if(inPart){currentPart += chr;}
-                    break;
-            }
-            i++;
-        }
-        return outputAr;
-    }
-    function BADLY_ITERATE_QUOTED_CSV(data){
-        const lines = [];
-        const l = data.length;
-        let i = 0;
-        let currentLine = '';
-        let isInPart = false;
-        let isEscapedQuote = false;
-        //let previousChar = undefined;
-        while(i < l){
-            const currentChar = data.charAt(i);
-            const nextChar = data.charAt(i+1);
-            //const nextNextChar = data.charAt(i+2);
-
-            switch(currentChar){
-                case '"':
-                    if(isEscapedQuote){
-                        isEscapedQuote = false;
-                    }else{
-                        if(!isInPart){
-                            isInPart = true;
-                        }else{
-                            if(nextChar == '"'){
-                                isEscapedQuote = true;
-                            }else{
-                                isInPart = false;
-                            }
-                        }
-                    }
-                    currentLine += currentChar;
-                    break;
-                case '\r':
-                case '\n':
-                    if(isInPart){
-                        currentLine += currentChar;
-                    }else{
-                        lines.push(BADLY_PARSE_QUOTED_CSV_LINE(currentLine));
-                        currentLine = '';
-                        while(/\s/.test(data.charAt(i))){
-                              i++
-                        }
-                        i--;
-                    }
-                    break;
-                default:
-                    currentLine += currentChar;
-                    break;
-            }
-
-            i++;
-            //previousChar = currentChar;
-        }
-        return lines;
-    }
-
-    //PREFER THIS ONE IT HANDLES QUOTED AND UNQUOTED CSVS
-    //AND IT DOESN'T NEED TO SPLIT THE LINES IN A SEPERATE STEP!
-    function BADLY_ITERATE_GENERIC_CSV(data){
-        const rows = [];
-        let row = [];
-
-        const l = data.length;
-        let i = 0;
-        let currentPart = '';
-        let isInQuotedPart = false;
-        let havePushedLastPart = false;
-        let lastChar;
-
-        //let previousChar = undefined;
-        while(i < l){
-            const currentChar = data.charAt(i);
-            const nextChar = data.charAt(i+1);
-            havePushedLastPart = false;
-
-            switch(currentChar){
-                case '"':
-                    switch(true){
-                        //If we've encountered a double quote and we are not already in a quoted section, enter the quoted section
-                        case (!isInQuotedPart):
-                            isInQuotedPart = true;
-                            break;
-
-                        //If the immediatly next charcter is a double quote then the quote is escaped
-                        case (nextChar == '"'):
-                            currentPart += currentChar;
-                            i++; //Skip the escaped double quote
-                            break;
-
-                        //In any other case exit the quoted section
-                        default:
-                            isInQuotedPart = false;
-                    }
-                    break;
-                case ',':
-                    if(isInQuotedPart){
-                        currentPart += currentChar
-                    }else{
-                        row.push(currentPart);
-                        currentPart = '';
-                    }
-                    break;
-                case '\r':
-                case '\n':
-                    if(isInQuotedPart){
-                        currentPart += currentChar;
-                    }else{
-                        row.push(currentPart);
-                        havePushedLastPart = true;
-
-                        rows.push(row);
-                        row = [];
-                        currentPart = '';
-                        while(/\r|\n/.test(data.charAt(i))){ //Skip all new line characters (including the current one)
-                            i++
-                        }
-                        i--; //Rewind one character
-                    }
-                    break;
-                default:
-                    currentPart += currentChar;
-            }
-            i++;
-        }//Next char
-        if(row.length > 0){
-            if(!havePushedLastPart){row.push(currentPart);}
-
-            rows.push(row);
-            row = [];
-        }
-
-        return rows;
-    }
-
-    function BADLY_PARSE_CSV(data){
-        const lines = BADLY_ITERATE_GENERIC_CSV(data);
-        const headers = lines[0];
-        const output = [];
-
-        output.push(headers);
-
-        for(var i = 1; i < lines.length; i++){
-            const lineParts = lines[i];
-
-            if(!!lineParts){
-                if(lineParts.length != headers.length){
-                    console.log('Oh no');
-                }
-                for(var j = 0;j < headers.length; j++){
-                    lineParts[headers[j]] = lineParts[j]
-                }
-                output.push(lineParts);
-            }
-        }
-        return output;
-    }
-
-
-    //================================= CSV converting =======================================
-
-    function CSV_2_TABLE(parsed, html_headers){
-        const rx = /\{(.+?)\}/ig;
-        const isWhiteRx = /^\s+$/;
-        const isNonGuest = /^\s*Guest\s*#\s*\d+\s*$/;
-
-        const outputArray = [];
-        outputArray.push(parsed[0]);
-
-        for(var i = 1; i < parsed.length; i++){
-            const line = parsed[i];
-            const output_row = [];
-
-            for(var hh = 0; hh < html_headers.length; hh++){
-                let headerVal = html_headers[hh][1];
-                let headerValues = [];
-                let processedHeaderValues = [];
-                if(Array.isArray(headerVal)){
-                    headerValues = headerVal;
-                }else{
-                    headerValues = [['',headerVal]];
-                }
-
-                for(var j = 0; j < headerValues.length; j++){
-                    let workingValue = headerValues[j][1]
-                    const matches = workingValue.matchAll(rx);
-                    for(const M of matches){
-                        const v = line[M[1]];
-                        if(v === undefined){
-                            workingValue = workingValue.replace(M[0],'');
-                        }else{
-                            workingValue = workingValue.replace(M[0],v);
-                        }
-                    }
-
-                    if((workingValue != '') && (!isWhiteRx.test(workingValue)) && (!isNonGuest.test(workingValue))){
-                        processedHeaderValues.push([headerValues[j][0],workingValue]);
-                    }
-                }
-                if(processedHeaderValues.length === 1){
-                    headerVal = processedHeaderValues[0][1];
-                }else{
-                    headerVal = '';
-                    for(const hv of processedHeaderValues){
-                        headerVal += (hv[0] + ':&nbsp' + hv[1] + '<br>');
-                    }
-                }
-
-                output_row.push(headerVal);
-            }
-            outputArray.push(output_row);
-
-        }
-        return outputArray;
-    }
-    function TABLE_REMOVE_DUPLICATES(table){
-        const l = table.length;
-        const m = table[0].length;
-        const cleaned = [];
-        let test = false;
-        for(var i = 1; i < l; i++){
-            const a = table[i][0];
-            searchCleaned: {
-                for(var j = 0; j < cleaned.length; j++){
-                    test = false;
-                    if(cleaned[j][0] === a){
-                        test = true;
-                        for(var k = 1; k < m; k++){
-                            test = (test && (table[i][k] === cleaned[j][k]));
-                        }
-                        if(test){break searchCleaned;} //If we've found a dupicate we can exit early.
-                    }
-                }
-            }
-            if(!test){
-                cleaned.push(table[i]);
-            }
-        }
-
-        return cleaned;
-    }
-    function CSV_2_HTML(data, headers){
-        const table = TABLE_REMOVE_DUPLICATES(CSV_2_TABLE(BADLY_PARSE_CSV(data),headers));
-
-        let out = '<table><thead><tr>';
-        for(var h = 0; h < headers.length; h++){
-            out += ('<th>' + headers[h][0] + '</th>');
-        }
-        out += '</tr></thead><tbody>';
-
-        for(var i = 1; i < table.length; i++){
-            out += '<tr>';
-            const row = table[i];
-            for(const cell of row){
-                out += ('<td>' + cell + '</td>');
-            }
-            out += '</tr>';
-        }
-        out += '</tobody></table>';
-
-        return out;
-    }
-
-    function TABLE_2_QUOTEDCSV(table){
-        let csv = "";
-        for(const row of table){
-            for(const cell of row){
-                if((cell instanceof String) || (typeof cell === 'string')){
-                    csv += `"${cell.replace('"','""')}",`;
-                }else if(cell === undefined){
-                    csv += '"",';
-                }else{
-                    csv += `"${cell}",`;
-                }
-            }
-            csv = csv.slice(0,-1) + '\r\n';
-        }
-        return csv.slice(0,-2);
-    }
-    /*function TABLE_2_CSV(table){
-        let csv = "";
-        for(const row of table){
-            for(const cell of row){
-                if((cell instanceof String) || (typeof cell === 'string')){
-
-                    csv += `"${cell.replace('"','""')}",`;
-                }else if(cell === undefined){
-                    csv += '"",';
-                }else{
-                    csv += `"${cell}",`;
-                }
-            }
-            csv = csv.slice(0,-1) + '\r\n';
-        }
-        return csv.slice(0,-2);
-    }*/
-
-    //================================ Helper functions ======================================
-    function toYYYYMMDD(dte){
-        const YYYY= `${dte.getFullYear()}`;
-        const MM = `${dte.getMonth() + 1}`.padStart(2,'0');
-        const DD = `${dte.getDate()}`.padStart(2,'0');
-
-        return `${YYYY}-${MM}-${DD}`;
-    }
-
-    function daysBetween(startDate, endDate) {
-        function treatAsUTC(date) {
-            const result = new Date(date);
-            result.setMinutes(result.getMinutes() - result.getTimezoneOffset());
-            return result;
-        }
-        const millisecondsPerDay = 24 * 60 * 60 * 1000;
-        return (treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay;
-    }
 
     function ApplyGenericTableFormatting($table){
         $table.addClass('scriptTable');
-    }
-
-    function getContentDiv(){
-        return $('#content');
-    }
-    function getMainPageContentAfterHeaders(){
-        const $content = getContentDiv().children().eq(0);
-        return $content.children('div.page-lg').eq(0);
-    }
-    function findPageTitle(){
-        const $content = getContentDiv().children().eq(0);
-        const $titleHeaders = $content.find('div[class^="PageHeader"][class*="Title"]');
-        const $pagelg = $titleHeaders.find('div.page-lg');
-        const $title = $pagelg.find('div[class^="Title"]');
-
-        return $title.eq(0);
-    }
-    function findPrimaryActionsDiv(){
-        const $content = getContentDiv().children().eq(0);
-        const $actionBar = $content.find('div[class^="PageHeader"][class*="ActionsBar"]');
-        const $pagelg = $actionBar.find('div.page-lg');
-        const $primaryActions = $pagelg.find('div[class^="PageHeader"][class*="primaryActions"]');
-
-        return $primaryActions.eq(0);
-    }
-    function findSecondaryActionsDiv(){
-        const $content = getContentDiv().children().eq(0);
-        const $actionBar = $content.find('div[class^="PageHeader"][class*="ActionsBar"]');
-        const $pagelg = $actionBar.find('div.page-lg');
-        const $primaryActions = $pagelg.find('div[class^="PageHeader"][class*="secondaryActions"]');
-
-        return $primaryActions.eq(0);
     }
 
     function getBookingCode(){
@@ -648,19 +929,6 @@ a.scriptGuestBtn{
 
 
         return null;
-    }
-
-    function showSpinner(){
-        if($('#my-spinner').length === 0){
-            const $page = $('#page');
-            $page.prepend($MYSPINNER);
-        }
-        $MYSPINNER.show();
-    }
-    function hideSpinner(){
-        if($('#my-spinner').length !== 0){
-            $MYSPINNER.hide();
-        }
     }
 
     function stringToUtf8Blob(str,mimeSubType){
@@ -711,92 +979,18 @@ a.scriptGuestBtn{
         return array.indexOf(value) === index;
     }
 
-    function getCsvExport_generic(args, url){
-        const PROMISE = $.Deferred();
-
-        const data = new URLSearchParams(window.location.search);
-        for(const [key,value] of Object.entries(args)){
-            data.set(key,value);
-        }
-
-        $.get({
-            url:'/get/export/',
-            data:data.toString(),
-            success:(data_, result_, xhr_,)=>{
-                const $frame = $(data_);
-                const $form = $frame.find('#export_form').eq(0);
-
-                $form.find('#rpt_name').val(`report`);
-                $form.find('#format').val('csv');
-                $form.find('#columns').val('*');
-                $form.find('#destination').val('desktop');
-                $form.find('#iso_dates').prop('checked',true);
-
-                const formData = $form.serialize();
-
-                $.get({
-                    url:'/booking/manifest/',
-                    data: formData,
-                    success: (data__, result__, xhr__)=>PROMISE.resolve(data__, result__,xhr__, formData),
-                    dataType:'text'
-                });
-            },
-            dataType:'html'
-        });
-
-        return PROMISE.promise();
-    }
-
-    function replaceDailyManifestWith($element, title){
-        const $pageTitle = findPageTitle()
-        $pageTitle.data('html',$pageTitle.html());
-        $pageTitle.text(title); //Change page title
-
-        //Find the actions bar where the date selectors exist and hide
-        //any nodes that should be hidden when printing.
-        const $actions = findPrimaryActionsDiv();
-        const $printViewHidden = $actions.find('.printViewHidden');
-        $printViewHidden.hide();
-
-        //Display the text version.
-        const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
-        $text.show(); //Make sure the text version is shown.
-
-        const $page = getMainPageContentAfterHeaders();
-        $page.data('previouslyVisable',$page.children(':visible'));
-        $page.data('previouslyVisable').hide(); //Emptying the div breaks things
-        $page.append($element);
-    }
-    function revertDailyManifest($element){
-        $element.remove();
-
-        const $actions = findPrimaryActionsDiv();
-        const $printViewHidden = $actions.find('.printViewHidden');
-        $printViewHidden.show();
-
-        const $page = getMainPageContentAfterHeaders();
-        $page.data('previouslyVisable').show();
-        $page.data('previouslyVisable',undefined);
-
-        //Display the text version.
-        const $text = $actions.find('div[class^="Text__Text_"]').eq(0); //This is the text version of the date(s) selected.
-        $text.hide(); //Make sure the text version is shown.
-
-        const $pageTitle = findPageTitle()
-        $pageTitle.html($pageTitle.data('html')); //Change page title
-        $pageTitle.data('html',undefined);
-    }
     //========================================================================================
     //================================ Modification functions ================================
     //= These are the functions that actually provide the extra features
     //========================================================================================
+
 
     function DoConvertDailyManifest_2_overnight(){
         //*******************************
         //* Request the export form, perform the request for the CSV data, and pass it over to step 2
         //*******************************
         function ConvertDailyManifest_2_OvernightReport_1(){
-            getCsvExport_generic({timeframe:'ongoing'},'/booking/manifest/').then(ConvertDailyManifest_2_OvernightReport_2);
+            DAILYMANIFEST.export.ongoing().then(ConvertDailyManifest_2_OvernightReport_2);
         }
 
         //*******************************
@@ -804,27 +998,145 @@ a.scriptGuestBtn{
         //* Hide the main content of the page and replace with generated table.
         //*******************************
         function ConvertDailyManifest_2_OvernightReport_2(data,result,XHR){
-            const HTML = CSV_2_HTML(data, OVERNIGHT_HEADERS);
+            const HTML = CSV.parseToHTML(data, OVERNIGHT_HEADERS);
 
             const $table = $(HTML);
             ApplyGenericTableFormatting($table);
             $table.attr('id','overnightTable');
 
-            replaceDailyManifestWith($table,'Overnight Report');
+            DAILYMANIFEST.replaceWith($table,'Overnight Report');
 
             $('#overnightButtonDesktop').text('Close Report');
 
-            hideSpinner();
+            SPINNER.hide();
         }
 
         const $table = $('#overnightTable');
         if($table.length === 0){
-            showSpinner();
+            SPINNER.show();
             ConvertDailyManifest_2_OvernightReport_1();
         }else{
-            revertDailyManifest($table);
+            DAILYMANIFEST.revertReplace();
             $('#overnightButtonDesktop').text('Overnight Report');
         }
+    }
+
+    function DoConvertDailyManifest_2_changeover(){
+        const MAX_LOOK_AHEAD = DAILYMANIFEST.changeOverReportUtils.max_look_ahead;
+
+        //Get the ending bookings
+        function DoChangeOverDayReport_1(){
+            DAILYMANIFEST.export.checkouts().then(DoChangeOverDayReport_2);
+        }
+
+        function DoChangeOverDayReport_2(data, result, xhr, formData){
+            let leaving_bookings_raw = CSV.parse(data);
+            let addedProducts = [];
+            const leaving_bookings = [leaving_bookings_raw[0]];
+
+            for(var i = 1; i < leaving_bookings_raw.length; i++){
+                const pn = leaving_bookings_raw[i]['Product Name'];
+                if(!addedProducts.includes(pn)){
+                    leaving_bookings.push(leaving_bookings_raw[i]);
+                    addedProducts.push(pn);
+                }
+            }
+            addedProducts = undefined;
+            leaving_bookings_raw = undefined;
+
+
+            const params = new URLSearchParams(formData);
+            const dateStr = params.get('date');
+            let searchStartDate = new Date();
+            if(dateStr != undefined && dateStr != ''){
+                searchStartDate = new Date(params.get('date'));
+            }
+
+            function GetAllCheckinsFor(dte_){
+                const D = $.Deferred();
+                DAILYMANIFEST.export.checkins(dte_).then((data_,result_,xhr_,formData_)=>{
+                    D.resolve(CSV.parse(data_));
+                });
+
+                return D.promise();
+            }
+
+            function CheckCheckinsAgainstLeaving(leaving_, checkins_){
+                let allFound = true;
+                if(checkins_.length == 1){
+                    return false;
+                }
+
+                for(var i = 1; i < leaving_.length; i++){
+                    const L = leaving_[i];
+                    inLoop: for(var j = 1; j < checkins_.length; j++){
+                        const C = checkins_[j];
+                        if(L['Product Name'] === C['Product Name']){
+                            if(L.Status.toLowerCase() != 'maintenance'){
+                                if(!Object.hasOwn(leaving_[i],'Next')){
+                                    leaving_[i].Next = C;
+                                    break inLoop;
+                                }
+                            }
+                        }
+                    }
+                    allFound = (allFound && (!!leaving_[i].Next))
+                }
+                return allFound;
+            }
+
+            function doSearchLoop(date_, leaving_, allDonePromise_, iterations = 0){
+                const allDonePromise = allDonePromise_ ?? $.Deferred();
+
+                console.log(`Serach iteration: ${iterations}`);
+
+                if(iterations >= MAX_LOOK_AHEAD){
+                    allDonePromise.resolve(leaving_);
+                    return allDonePromise.promise();
+                }
+
+                const P = GetAllCheckinsFor(date_);
+                P.then((arriving)=>CheckCheckinsAgainstLeaving(leaving_,arriving)).
+                  then((haveFoundAll)=>{
+                    if(haveFoundAll === true){
+                        allDonePromise.resolve(leaving_);
+                    }else{
+                        const Dnext = date_;
+                        Dnext.setDate(Dnext.getDate()+1);
+                        setTimeout(doSearchLoop(Dnext,leaving_,allDonePromise, iterations+1),150);
+                    }
+                });
+
+                return allDonePromise.promise();
+            }
+
+            doSearchLoop(searchStartDate, leaving_bookings).then(MakeTable);
+        }
+
+        function MakeTable(leavingAr){
+
+            const html = CSV.toHTML(leavingAr, CHANGEOVER_HEADERS);
+
+            const $table = $(html);
+            ApplyGenericTableFormatting($table);
+            $table.attr('id','changeoverTable');
+
+            DAILYMANIFEST.replaceWith($table,'Changeovers');
+
+            $('#changeOverButtonDesktop').text('Close Report');
+
+            SPINNER.hide();
+        }
+
+        const $table = $('#changeoverTable');
+        if($table.length === 0){
+            SPINNER.show();
+            DoChangeOverDayReport_1();
+        }else{
+            DAILYMANIFEST.revertReplace();
+            $('#changeOverButtonDesktop').text('Changeover Report');
+        }
+
     }
 
     function DoSetColumnsFromPresets(index){
@@ -1207,7 +1519,7 @@ a.scriptGuestBtn{
             }
 
             //Convert the table into a CSV file and decode the htmlentites into text.
-            const csvStr = decodeHtml(TABLE_2_QUOTEDCSV(table));
+            const csvStr = decodeHtml(CSV.tableToCsv(table));
 
             //Creeate a blob and an object URL
             const blob = stringToUtf8Blob(csvStr,'csv');
@@ -1260,10 +1572,10 @@ a.scriptGuestBtn{
 
             $('#makeGuestListEasy').hide();
 
-            hideSpinner();
+            SPINNER.hide();
         }
 
-        showSpinner();
+        SPINNER.show();
         const requests = RequestAllGuestData();
         const whenAllDataHasArrived = $.when(...requests);
         whenAllDataHasArrived.then(GenerateSimpleGuestList);
@@ -1353,7 +1665,7 @@ a.scriptGuestBtn{
                             if(firstGuestType === undefined){firstGuestType = guest_type;}
 
                             if(guest_type === prefImportParam.guest_type){
-                                 if(prefImportParam.items.includes(itemId)){ // If the prefered item specifies this item then we have found the prefered param
+                                if(prefImportParam.items.includes(itemId)){ // If the prefered item specifies this item then we have found the prefered param
                                     foundGuestType = guest_type;
                                     break findPreferedParam;
                                 }else if(prefImportParam.items.length === 0){ // If there are no specific items for this param then it can match any item
@@ -1398,7 +1710,7 @@ a.scriptGuestBtn{
         table.push(verificationRow);
 
 
-        const csvStr = TABLE_2_QUOTEDCSV(table);
+        const csvStr = CSV.tableToCsv(table);
         const blob = stringToUtf8Blob(csvStr,'csv');
         const dataUrl = URL.createObjectURL(blob);
 
@@ -1506,7 +1818,7 @@ a.scriptGuestBtn{
                 return a && b && c;
             }
 
-            const table = BADLY_PARSE_CSV(loadedReader.result);
+            const table = CSV.parse(loadedReader.result);
             const byGuest = [];
             const usedRows = [];
             const headers = table[0];
@@ -1639,256 +1951,6 @@ a.scriptGuestBtn{
     }
 
 
-    function DoChangeOverDayReport(){
-        const MAX_LOOK_AHEAD = 30;
-        function getCsvExport(timeframe,date){
-            if(!!date){
-                return getCsvExport_generic({'timeframe':timeframe,
-                                             'date':toYYYYMMDD(date),
-                                            },'/booking/manifest/');
-            }else{
-                return getCsvExport_generic({'timeframe':timeframe
-                                            },'/booking/manifest/');
-            }
-        }
-
-        //Get the ending bookings
-        function DoChangeOverDayReport_1(){
-            getCsvExport('ending').then(DoChangeOverDayReport_2);
-        }
-
-        function DoChangeOverDayReport_2(data, result, xhr, formData){
-            let leaving_bookings_raw = BADLY_PARSE_CSV(data);
-            let addedProducts = [];
-            const leaving_bookings = [leaving_bookings_raw[0]];
-
-            for(var i = 1; i < leaving_bookings_raw.length; i++){
-                const pn = leaving_bookings_raw[i]['Product Name'];
-                if(!addedProducts.includes(pn)){
-                    leaving_bookings.push(leaving_bookings_raw[i]);
-                    addedProducts.push(pn);
-                }
-            }
-            addedProducts = undefined;
-            leaving_bookings_raw = undefined;
-
-
-            const params = new URLSearchParams(formData);
-            const dateStr = params.get('date');
-            let searchStartDate = new Date();
-            if(dateStr != undefined && dateStr != ''){
-                searchStartDate = new Date(params.get('date'));
-            }
-
-            function GetAllCheckinsFor(dte_, formData_){
-                const D = $.Deferred();
-
-                getCsvExport('starting', dte_).then((data_,result_,xhr_,formData_)=>{
-                    D.resolve(BADLY_PARSE_CSV(data_));
-                });
-
-                return D.promise();
-            }
-
-            function CheckCheckinsAgainstLeaving(leaving_, checkins_){
-                let allFound = true;
-                if(checkins_.length == 1){
-                    return false;
-                }
-
-                for(var i = 1; i < leaving_.length; i++){
-                    const L = leaving_[i];
-                    inLoop: for(var j = 1; j < checkins_.length; j++){
-                        const C = checkins_[j];
-                        if(L['Product Name'] === C['Product Name']){
-                            if(L.Status.toLowerCase() != 'maintenance'){
-                                if(!Object.hasOwn(leaving_[i],'Next')){
-                                    leaving_[i].Next = C;
-                                    break inLoop;
-                                }
-                            }
-                        }
-                    }
-                    allFound = (allFound && (!!leaving_[i].Next))
-                }
-                return allFound;
-            }
-
-            function doSearchLoop(date_, leaving_, formData_, allDonePromise_, iterations = 0){
-                const allDonePromise = allDonePromise_ ?? $.Deferred();
-
-                console.log(`Serach iteration: ${iterations}`);
-
-                if(iterations >= MAX_LOOK_AHEAD){
-                    allDonePromise.resolve(leaving_);
-                    return allDonePromise.promise();
-                }
-
-                const P = GetAllCheckinsFor(date_, formData_);
-                P.then((arriving)=>CheckCheckinsAgainstLeaving(leaving_,arriving)).
-                  then((haveFoundAll)=>{
-                    if(haveFoundAll === true){
-                        allDonePromise.resolve(leaving_);
-                    }else{
-                        const Dnext = date_;
-                        Dnext.setDate(Dnext.getDate()+1);
-                        setTimeout(doSearchLoop(Dnext,leaving_,formData_,allDonePromise, iterations+1),150);
-                    }
-                });
-
-                return allDonePromise.promise();
-            }
-
-            doSearchLoop(searchStartDate, leaving_bookings, formData).then(MakeTable);
-        }
-
-        function MakeTable(leavingAr){
-            const $table = $('<table><thead><tr><th>Room<span>Next checkin</span></th><th>Single / Twin / Double</th><th>Accessability Notes</th></tr></thead><tbody></tbody></table>');
-
-            const $tbody = $table.find('tbody').eq(0);
-
-            function SingleTwinDouble(row){
-                switch(true){
-                    case(row['Upgrade to a Twin room'] == '1'):
-                        return 'Twin';
-                    case(row['Upgrade to a Double room'] == '1'):
-                        return 'Double';
-                    case(row['Single'] == '1'):
-                        return 'Single';
-                    default:
-                        return `${row['No of Guests']} beds`;
-                }
-            }
-
-            function GetDaysTillCheckIn(row){
-                function getDate(row,start_end){
-                    const d = row[`${start_end} Date`];
-                    const t = row[`${start_end} Time`];
-                    switch(true){
-                        case(start_end == 'Start'):
-                            if(t == ''){
-                                return new Date(d);
-                            }else{
-                                return new Date(`${d} ${t}`);
-                            }
-                            break;
-                        case(start_end == 'End'):
-                            if(t == ''){
-                                var k = new Date(d);
-                                k.setDate(k.getDate()+1);
-                                return k
-                            }else{
-                                return new Date(`${d} ${t}`);
-                            }
-                            break;
-                        default:
-                            throw Error('Invalid start_end value');
-                    }
-                }
-
-                if(!(!!row.Next)){
-                    return -1;
-                }
-
-                const cod = getDate(row, 'End');
-                const cid = getDate(row.Next, 'Start');
-
-                return Math.trunc(daysBetween(cod, cid));
-            }
-
-            for(var i = 1; i < leavingAr.length; i++){
-                const leaving = leavingAr[i];
-                const data = [leaving['Product Name'],'',''];
-                const next = leaving.Next;
-                const days = GetDaysTillCheckIn(leaving);
-                if(!!next){
-                    const status = next.Status.toLowerCase();
-                    switch(true){
-                        case(status == 'trustee / vip'):
-                            data[1] = `VIP!! ${SingleTwinDouble(next)}`;
-                            break;
-                        case(status == 'vols'):
-                            data[1] = `${SingleTwinDouble(next)} (VOL)`;
-                            break;
-                        case(status == 'gse tutor'):
-                            data[1] = 'GSE (Tutor)';
-                            break;
-                        case(status == 'm\'arch 5th yrs'):
-                            data[1] = 'GSE (Student)';
-                            break;
-                        case(status == 'gse'):
-                            data[1] = 'GSE (Student)';
-                            break;
-                        case(status == 'gse provisional'):
-                            data[1] = 'GSE (Unalocated?)';
-                            break;
-                        case(status == 'staff'):
-                            data[1] = `${SingleTwinDouble(next)} (Staff)`;
-                            break;
-                        case(status == 'schools & groups'):
-                            data[1] = `${SingleTwinDouble(next)} (Sch'l / group)`;
-                            break;
-                        case(status == 'prov schools & group'):
-                            data[1] = `${SingleTwinDouble(next)} (Provisional Sch'l / group)`;
-                            break;
-                        case(status == 'engagement'):
-                            data[1] = `${SingleTwinDouble(next)} (Engagement group)`;
-                            break;
-                        case(status == 'prov engagement'):
-                            data[1] = `${SingleTwinDouble(next)} (Provisional engagement group)`;
-                            break;
-                        case(status == 'sc'):
-                            data[1] = `${SingleTwinDouble(next)} (Short Course)`;
-                            break;
-                        default:
-                            data[1] = SingleTwinDouble(next);
-                            break;
-                    }
-                    switch(true){
-                        case (days == 0):
-                            data[0] += ` <span>[&nbsp;Today!&nbsp;&nbsp;]</span>`;
-                            break;
-                        case (days ==1):
-                            data[0] += ` <span>[&nbsp;Tomorrow!&nbsp;]</span>`;
-                            break;
-                        case (days > 0):
-                            data[0] += ` <span>[&nbsp;${days} days&nbsp;]</span>`;
-                            break;
-                    }
-                    data[2] = next['Accessibility requirements'];
-                }else{
-                    data[1] = `No booking within ~${MAX_LOOK_AHEAD} days`;
-                }
-
-                const $row = $('<tr></tr>');
-                for(const D of data){
-                    const $td = $('<td></td>');
-                    $td.html(D);
-                    $row.append($td);
-                }
-                $tbody.append($row);
-
-            }
-
-            ApplyGenericTableFormatting($table);
-            $table.attr('id','changeoverTable');
-            replaceDailyManifestWith($table,'Changeovers');
-
-            $('#changeOverButtonDesktop').text('Close Report');
-
-            hideSpinner();
-        }
-
-        const $table = $('#changeoverTable');
-        if($table.length === 0){
-            showSpinner();
-            DoChangeOverDayReport_1();
-        }else{
-            revertDailyManifest($table);
-            $('#changeOverButtonDesktop').text('Changeover Report');
-        }
-
-    }
     //==================================== AddButtons etc =====================================
     //*******************************
     //* Adds an "Overnight Report" button to the daily manifest report.
@@ -1901,7 +1963,7 @@ a.scriptGuestBtn{
         }
         function changeOverReportBtnClick(event){
             event.preventDefault();
-            DoChangeOverDayReport();
+            DoConvertDailyManifest_2_changeover();
         }
         function configureOverNightReportBtnClonedButton($cloneButton, id){
             $cloneButton.attr({'id':id,
@@ -2064,6 +2126,7 @@ a.scriptGuestBtn{
                 console.log('AddGuestlistButton');
                 AddSimpleGuestlistButton();
 
+                console.log('AddGuestImportButton');
                 AddGuestImportButton();
                 break;
         }
