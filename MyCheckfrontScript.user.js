@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-02T14:04
+// @version      2025-11-02T18:00
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -510,19 +510,27 @@ console.log('Hello world');
         const MY_SPINNER = `
 <svg width="120" height="120" stroke="#000" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g><circle cx="12" cy="12" r="9.5" fill="none" stroke-width="3" stroke-linecap="round"><animate attributeName="stroke-dasharray" dur="1.5s" calcMode="spline" values="0 150;42 150;42 150;42 150" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="1.5s" calcMode="spline" values="0;-16;-59;-59" keyTimes="0;0.475;0.95;1" keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1" repeatCount="indefinite"/></circle><animateTransform attributeName="transform" type="rotate" dur="2s" values="0 12 12;360 12 12" repeatCount="indefinite"/></g></svg>
 `;
-        const $MYSPINNER = $('<div id="my-spinner"><div>' + MY_SPINNER + '</div></div>');
 
-        function showSpinner(){
-            if($('#my-spinner').length === 0){
+        let $spinner;
+        function createSpinner(){
+            const $s = $('#my-spinner')
+            if($s.length === 0){
                 const $page = $('#page');
-                $page.prepend($MYSPINNER);
+                $spinner = $(`<div id="my-spinner"><div>${MY_SPINNER}</div></div>`);
+                $page.prepend($spinner);
+            }else{
+                $spinner.show();
             }
-            $MYSPINNER.show();
+        }
+        function showSpinner(text){
+            createSpinner();
+            $spinner.show();
+            PROGRESS.setMessage(text??'Working');
         }
         function hideSpinner(){
-            if($('#my-spinner').length !== 0){
-                $MYSPINNER.hide();
-            }
+            createSpinner();
+            $spinner.hide();
+            PROGRESS.hide();
         }
 
         return {
@@ -725,9 +733,243 @@ console.log('Hello world');
         }
         //--------
 
+        function MakeOvernightReport(){
+            //*******************************
+            //* Request the export form, perform the request for the CSV data, and pass it over to step 2
+            //*******************************
+            function ConvertDailyManifest_2_OvernightReport_1(){
+                PROGRESS.setMessage('Load bookings...');
+                getDailyManifestExport_Ongoing().then(ConvertDailyManifest_2_OvernightReport_2);
+            }
+
+            //*******************************
+            //* Parse the CSV and convert it to a HTML table.
+            //* Hide the main content of the page and replace with generated table.
+            //*******************************
+            function ConvertDailyManifest_2_OvernightReport_2(data,result,XHR){
+                const HTML = CSV.parseToHTML(data, OVERNIGHT_HEADERS);
+
+                const $table = $(HTML);
+                ApplyGenericTableFormatting($table);
+                $table.attr('id','overnightTable');
+
+                replaceDailyManifestWith($table,'Overnight Report');
+
+                PROGRESS.hide();
+                SPINNER.hide();
+            }
+
+            SPINNER.show();
+            ConvertDailyManifest_2_OvernightReport_1();
+        }
+
+        function MakeChangeOverReport(){
+            //Get the ending bookings
+            function DoChangeOverDayReport_1(){
+                PROGRESS.setMessage('Load chekouts...');
+                getDailyManifestExport_Checkouts().then(DoChangeOverDayReport_2);
+            }
+
+            function DoChangeOverDayReport_2(data, result, xhr, formData){
+                let leaving_bookings_raw = CSV.parse(data);
+                let addedProducts = [];
+                const leaving_bookings = [leaving_bookings_raw[0]];
+
+                for(var i = 1; i < leaving_bookings_raw.length; i++){
+                    const L = leaving_bookings_raw[i]
+                    if(L.Status.toLowerCase() != 'maintenance'){
+                        const pn = L['Product Name'];
+                        if(!addedProducts.includes(pn)){
+                            leaving_bookings.push(L);
+                            addedProducts.push(pn);
+                        }
+                    }
+                }
+                addedProducts = undefined;
+                leaving_bookings_raw = undefined;
+
+
+                const params = new URLSearchParams(formData);
+                const dateStr = params.get('date');
+                let searchStartDate = new Date();
+                if(dateStr != undefined && dateStr != ''){
+                    searchStartDate = new Date(params.get('date'));
+                }
+
+                function GetAllCheckinsFor(dte_){
+                    const D = $.Deferred();
+                    getDailyManifestExport_Checkins(dte_).then((data_,result_,xhr_,formData_)=>{
+                        D.resolve(CSV.parse(data_));
+                    });
+
+                    return D.promise();
+                }
+
+                function CheckCheckinsAgainstLeaving(leaving_, checkins_){
+                    let allFound = true;
+                    if(checkins_.length == 1){
+                        return false;
+                    }
+
+                    for(var i = 1; i < leaving_.length; i++){
+                        const L = leaving_[i];
+                        inLoop: for(var j = 1; j < checkins_.length; j++){
+                            const C = checkins_[j];
+                            if(C.Status.toLowerCase() != 'maintenance'){
+                                if(L['Product Name'] === C['Product Name']){
+                                    if(!Object.hasOwn(leaving_[i],'Next')){
+                                        leaving_[i].Next = C;
+                                        break inLoop;
+                                    }
+                                }
+                            }
+                        }
+                        allFound = (allFound && (!!leaving_[i].Next))
+                    }
+                    return allFound;
+                }
+
+                function doSearchLoop(date_, leaving_, allDonePromise_, iterations = 0){
+                    const allDonePromise = allDonePromise_ ?? $.Deferred();
+
+                    PROGRESS.setMessage(`Checking day ${iterations} of ${MAX_LOOK_AHEAD}...`);
+                    console.log(`Serach iteration: ${iterations}`);
+
+                    if(iterations >= MAX_LOOK_AHEAD){
+                        allDonePromise.resolve(leaving_);
+                        return allDonePromise.promise();
+                    }
+
+                    const P = GetAllCheckinsFor(date_);
+                    P.then((arriving)=>CheckCheckinsAgainstLeaving(leaving_,arriving)).
+                    then((haveFoundAll)=>{
+                        if(haveFoundAll === true){
+                            allDonePromise.resolve(leaving_);
+                        }else{
+                            const Dnext = date_;
+                            Dnext.setDate(Dnext.getDate()+1);
+                            setTimeout(doSearchLoop(Dnext,leaving_,allDonePromise, iterations+1),150);
+                        }
+                    });
+
+                    return allDonePromise.promise();
+                }
+
+                doSearchLoop(searchStartDate, leaving_bookings).then(MakeTable);
+            }
+
+            function MakeTable(leavingAr){
+                const html = CSV.toHTML(leavingAr, CHANGEOVER_HEADERS);
+
+                const $table = $(html);
+                ApplyGenericTableFormatting($table);
+                $table.attr('id','changeoverTable');
+                $table.addClass('withCheckinColumn');
+
+                replaceDailyManifestWith($table,'Changeovers');
+
+                PROGRESS.hide();
+                SPINNER.hide();
+            }
+
+            SPINNER.show();
+            DoChangeOverDayReport_1();
+        }
+
+        function MakeCheckinsReport(){
+            function DoDailyCheckinsReport_1(){
+                const params = new URLSearchParams(window.location.search);
+                const dateStr = params.get('date');
+                let searchStartDate = new Date();
+                if(dateStr != undefined && dateStr != ''){
+                    searchStartDate = new Date(dateStr);
+                }
+                const StartDate = new Date(searchStartDate);
+
+                const checkingIn = [[]];
+
+                function GetAllCheckinsFor(dte_){
+                    const D = $.Deferred();
+                    getDailyManifestExport_Checkins(dte_).then((data_,result_,xhr_,formData_)=>{
+                        D.resolve(CSV.parse(data_));
+                    });
+
+                    return D.promise();
+                }
+                function alreadyHaveCheckin(row){
+                    return checkingIn.some((e)=>{return e['Product Name'] == row['Product Name']});
+                }
+
+                function doSearchLoop(date_, allDonePromise_, iterations = 0){
+                    const allDonePromise = allDonePromise_ ?? $.Deferred();
+
+                    PROGRESS.setMessage(`Checking day ${iterations} of ${MAX_LOOK_AHEAD}...`);
+                    console.log(`Serach iteration: ${iterations}`);
+
+                    if(iterations >= MAX_LOOK_AHEAD){
+                        allDonePromise.resolve(checkingIn);
+                        return allDonePromise.promise();
+                    }
+
+                    GetAllCheckinsFor(date_).then((data)=>{
+                        const Dnext = date_;
+                        Dnext.setDate(Dnext.getDate()+1);
+
+                        const splice_args = data.filter((data_row)=>{return Object.hasOwn(data_row,'Status') && data_row.Status.toLowerCase() != 'maintenance' && !alreadyHaveCheckin(data_row)})
+                        splice_args.splice(0,0,checkingIn.length,0);
+
+                        checkingIn.splice.apply(checkingIn, splice_args);
+
+                        setTimeout(doSearchLoop(Dnext,allDonePromise, iterations+1),250);
+                    })
+
+                    return allDonePromise.promise();
+                }
+
+                doSearchLoop(searchStartDate).then((ar)=>{
+                    return ar.map((row)=>{
+                        return {
+                            'Product Name':row['Product Name'],
+                            'Start Date':DATES.toYYYYMMDD(StartDate),
+                            'Start Time':'00:00:00',
+                            'End Date':DATES.toYYYYMMDD(StartDate),
+                            'End Time':'00:00:00',
+                            'Next':row,
+                        }
+                    });
+                }).then(MakeTable);
+            }
+
+            function MakeTable(checkingInAr){
+
+                const html = CSV.toHTML(checkingInAr, CHANGEOVER_HEADERS);
+
+                const $table = $(html);
+                ApplyGenericTableFormatting($table);
+                $table.attr('id','dailyCheckTable');
+                $table.addClass('withCheckinColumn');
+
+                DAILYMANIFEST.replaceWith($table,'Daily Checkins');
+
+                $('#dailyCheckinsButtonDesktop').text('Close Report');
+
+                PROGRESS.hide();
+                SPINNER.hide();
+            }
+
+            SPINNER.show();
+            DoDailyCheckinsReport_1();
+        }
+
         return {
             replaceWith: replaceDailyManifestWith,
             revertReplace: revertDailyManifest,
+
+            reports:{
+                overnight:MakeOvernightReport,
+                changeOver:MakeChangeOverReport,
+                checkins:MakeCheckinsReport,
+            },
 
             export:{
                 checkins:getDailyManifestExport_Checkins,
@@ -749,7 +991,6 @@ console.log('Hello world');
         }
     })();
 
-    
     const PROGRESS = (function(){
         let $progressBox;
         
@@ -1047,266 +1288,6 @@ a.scriptGuestBtn{
     //================================ Modification functions ================================
     //= These are the functions that actually provide the extra features
     //========================================================================================
-
-
-    function DoConvertDailyManifest_2_overnight(){
-        //*******************************
-        //* Request the export form, perform the request for the CSV data, and pass it over to step 2
-        //*******************************
-        function ConvertDailyManifest_2_OvernightReport_1(){
-            PROGRESS.setMessage('Load bookings...');
-            DAILYMANIFEST.export.ongoing().then(ConvertDailyManifest_2_OvernightReport_2);
-        }
-
-        //*******************************
-        //* Parse the CSV and convert it to a HTML table.
-        //* Hide the main content of the page and replace with generated table.
-        //*******************************
-        function ConvertDailyManifest_2_OvernightReport_2(data,result,XHR){
-            const HTML = CSV.parseToHTML(data, OVERNIGHT_HEADERS);
-
-            const $table = $(HTML);
-            ApplyGenericTableFormatting($table);
-            $table.attr('id','overnightTable');
-
-            DAILYMANIFEST.replaceWith($table,'Overnight Report');
-
-            $('#overnightButtonDesktop').text('Close Report');
-
-            PROGRESS.hide();
-            SPINNER.hide();
-        }
-
-        const $table = $('#overnightTable');
-        if($table.length === 0){
-            SPINNER.show();
-            ConvertDailyManifest_2_OvernightReport_1();
-        }else{
-            DAILYMANIFEST.revertReplace();
-            $('#overnightButtonDesktop').text('Overnight Report');
-        }
-    }
-
-    function DoConvertDailyManifest_2_changeover(){
-        const MAX_LOOK_AHEAD = DAILYMANIFEST.changeOverReportUtils.max_look_ahead;
-
-        //Get the ending bookings
-        function DoChangeOverDayReport_1(){
-            PROGRESS.setMessage('Load chekouts...');
-            DAILYMANIFEST.export.checkouts().then(DoChangeOverDayReport_2);
-        }
-
-        function DoChangeOverDayReport_2(data, result, xhr, formData){
-            let leaving_bookings_raw = CSV.parse(data);
-            let addedProducts = [];
-            const leaving_bookings = [leaving_bookings_raw[0]];
-
-            for(var i = 1; i < leaving_bookings_raw.length; i++){
-                const L = leaving_bookings_raw[i]
-                if(L.Status.toLowerCase() != 'maintenance'){
-                    const pn = L['Product Name'];
-                    if(!addedProducts.includes(pn)){
-                        leaving_bookings.push(L);
-                        addedProducts.push(pn);
-                    }
-                }
-            }
-            addedProducts = undefined;
-            leaving_bookings_raw = undefined;
-
-
-            const params = new URLSearchParams(formData);
-            const dateStr = params.get('date');
-            let searchStartDate = new Date();
-            if(dateStr != undefined && dateStr != ''){
-                searchStartDate = new Date(params.get('date'));
-            }
-
-            function GetAllCheckinsFor(dte_){
-                const D = $.Deferred();
-                DAILYMANIFEST.export.checkins(dte_).then((data_,result_,xhr_,formData_)=>{
-                    D.resolve(CSV.parse(data_));
-                });
-
-                return D.promise();
-            }
-
-            function CheckCheckinsAgainstLeaving(leaving_, checkins_){
-                let allFound = true;
-                if(checkins_.length == 1){
-                    return false;
-                }
-
-                for(var i = 1; i < leaving_.length; i++){
-                    const L = leaving_[i];
-                    inLoop: for(var j = 1; j < checkins_.length; j++){
-                        const C = checkins_[j];
-                         if(C.Status.toLowerCase() != 'maintenance'){
-                             if(L['Product Name'] === C['Product Name']){
-                                if(!Object.hasOwn(leaving_[i],'Next')){
-                                    leaving_[i].Next = C;
-                                    break inLoop;
-                                }
-                            }
-                        }
-                    }
-                    allFound = (allFound && (!!leaving_[i].Next))
-                }
-                return allFound;
-            }
-
-            function doSearchLoop(date_, leaving_, allDonePromise_, iterations = 0){
-                const allDonePromise = allDonePromise_ ?? $.Deferred();
-
-                PROGRESS.setMessage(`Checking day ${iterations} of ${MAX_LOOK_AHEAD}...`);
-                console.log(`Serach iteration: ${iterations}`);
-
-                if(iterations >= MAX_LOOK_AHEAD){
-                    allDonePromise.resolve(leaving_);
-                    return allDonePromise.promise();
-                }
-
-                const P = GetAllCheckinsFor(date_);
-                P.then((arriving)=>CheckCheckinsAgainstLeaving(leaving_,arriving)).
-                  then((haveFoundAll)=>{
-                    if(haveFoundAll === true){
-                        allDonePromise.resolve(leaving_);
-                    }else{
-                        const Dnext = date_;
-                        Dnext.setDate(Dnext.getDate()+1);
-                        setTimeout(doSearchLoop(Dnext,leaving_,allDonePromise, iterations+1),150);
-                    }
-                });
-
-                return allDonePromise.promise();
-            }
-
-            doSearchLoop(searchStartDate, leaving_bookings).then(MakeTable);
-        }
-
-        function MakeTable(leavingAr){
-
-            const html = CSV.toHTML(leavingAr, CHANGEOVER_HEADERS);
-
-            const $table = $(html);
-            ApplyGenericTableFormatting($table);
-            $table.attr('id','changeoverTable');
-            $table.addClass('withCheckinColumn');
-
-            DAILYMANIFEST.replaceWith($table,'Changeovers');
-
-            $('#changeOverButtonDesktop').text('Close Report');
-
-            PROGRESS.hide();
-            SPINNER.hide();
-        }
-
-        const $table = $('#changeoverTable');
-        if($table.length === 0){
-            SPINNER.show();
-            DoChangeOverDayReport_1();
-        }else{
-            DAILYMANIFEST.revertReplace();
-            $('#changeOverButtonDesktop').text('Changeover Report');
-        }
-
-    }
-
-    function DoConvertDailyManifest_2_dailyCheckins(){
-        const MAX_LOOK_AHEAD = DAILYMANIFEST.changeOverReportUtils.max_look_ahead;
-
-        function DoDailyCheckinsReport_1(){
-            const params = new URLSearchParams(window.location.search);
-            const dateStr = params.get('date');
-            let searchStartDate = new Date();
-            if(dateStr != undefined && dateStr != ''){
-                searchStartDate = new Date(dateStr);
-            }
-            const StartDate = new Date(searchStartDate);
-
-            const checkingIn = [[]];
-
-            function GetAllCheckinsFor(dte_){
-                const D = $.Deferred();
-                DAILYMANIFEST.export.checkins(dte_).then((data_,result_,xhr_,formData_)=>{
-                    D.resolve(CSV.parse(data_));
-                });
-
-                return D.promise();
-            }
-            function alreadyHaveCheckin(row){
-                return checkingIn.some((e)=>{return e['Product Name'] == row['Product Name']});
-            }
-
-
-            function doSearchLoop(date_, allDonePromise_, iterations = 0){
-                const allDonePromise = allDonePromise_ ?? $.Deferred();
-
-                PROGRESS.setMessage(`Checking day ${iterations} of ${MAX_LOOK_AHEAD}...`);
-                console.log(`Serach iteration: ${iterations}`);
-
-                if(iterations >= MAX_LOOK_AHEAD){
-                    allDonePromise.resolve(checkingIn);
-                    return allDonePromise.promise();
-                }
-
-                GetAllCheckinsFor(date_).then((data)=>{
-                    const Dnext = date_;
-                    Dnext.setDate(Dnext.getDate()+1);
-
-                    const splice_args = data.filter((data_row)=>{return Object.hasOwn(data_row,'Status') && data_row.Status.toLowerCase() != 'maintenance' && !alreadyHaveCheckin(data_row)})
-                    splice_args.splice(0,0,checkingIn.length,0);
-
-                    checkingIn.splice.apply(checkingIn, splice_args);
-
-                    setTimeout(doSearchLoop(Dnext,allDonePromise, iterations+1),250);
-                })
-
-                return allDonePromise.promise();
-            }
-
-            doSearchLoop(searchStartDate).then((ar)=>{
-                return ar.map((row)=>{
-                    return {
-                        'Product Name':row['Product Name'],
-                        'Start Date':DATES.toYYYYMMDD(StartDate),
-                        'Start Time':'00:00:00',
-                        'End Date':DATES.toYYYYMMDD(StartDate),
-                        'End Time':'00:00:00',
-                        'Next':row,
-                    }
-                });
-            }).then(MakeTable);
-        }
-
-        function MakeTable(checkingInAr){
-
-            const html = CSV.toHTML(checkingInAr, CHANGEOVER_HEADERS);
-
-            const $table = $(html);
-            ApplyGenericTableFormatting($table);
-            $table.attr('id','dailyCheckTable');
-            $table.addClass('withCheckinColumn');
-
-            DAILYMANIFEST.replaceWith($table,'Daily Checkins');
-
-            $('#dailyCheckinsButtonDesktop').text('Close Report');
-
-            PROGRESS.hide();
-            SPINNER.hide();
-        }
-
-        const $table = $('#dailyCheckTable');
-        if($table.length === 0){
-            SPINNER.show();
-            DoDailyCheckinsReport_1();
-        }else{
-            DAILYMANIFEST.revertReplace();
-            $('#dailyCheckinsButtonDesktop').text('Daily Chekins');
-        }
-
-    }
-
     function DoSetColumnsFromPresets(index){
         const obj = DEFAULT_COLUMN_OPTS[index];
         if(!(!!obj)){return;}
@@ -1467,7 +1448,7 @@ a.scriptGuestBtn{
                         dataType:'json',
                         success:function(data,status,xhr){jqDeferred.resolve(data);},
                         complete:function(xhr, status){console.log(status);}
-                    });},10 * Math.random());
+                    });},100 * Math.random());
 
                 return jqDeferred.promise();
             }
@@ -1477,6 +1458,7 @@ a.scriptGuestBtn{
             const $guestTable = $('#guest-table');
             const $rows = $guestTable.find('tr[id^="guest_"]');
 
+            PROGRESS.setMessage(`Requesting guest data for ${$rows.length} guests`);
             for(const row of $rows){
                 const $row = $(row);
                 const guest_uuid = $row.data('guest_uuid');
@@ -1486,7 +1468,8 @@ a.scriptGuestBtn{
                 requests.push(request);
             }
 
-            return requests;
+            //return requests;
+            return $.when(...requests);
         }
 
         function GenerateSimpleGuestList(...args){
@@ -1744,8 +1727,9 @@ a.scriptGuestBtn{
         }
 
         SPINNER.show();
-        const requests = RequestAllGuestData();
-        const whenAllDataHasArrived = $.when(...requests);
+        //const requests = RequestAllGuestData();
+        //const whenAllDataHasArrived = $.when(...requests);
+        const whenAllDataHasArrived = RequestAllGuestData();
         whenAllDataHasArrived.then(GenerateSimpleGuestList);
     }
 
@@ -1791,8 +1775,6 @@ a.scriptGuestBtn{
 
         headers.push('INTERNAL [line-id]','INTERNAL [item-id]','INTERNAL [sku]')
         table.push(headers);
-
-
 
         for(const invoiceItem of $invoiceItemList){
             paramOptIns.fill('',0, paramCount);
@@ -1903,6 +1885,7 @@ a.scriptGuestBtn{
                 function SubmitGuest(json,status,jqXHR,otherArgs){
                     const guest = otherArgs.guests[otherArgs.index];
 
+                    PROGRESS.setMessage(`Update guest ${otherArgs.index + 1} of ${otherArgs.guests.length}`);
 
                     if(json.status == 'ERROR'){
                         otherArgs.whenDone.resolve({status:'ERROR',
@@ -1946,6 +1929,7 @@ a.scriptGuestBtn{
                     data:{activities:guest.items},
                 }
 
+                PROGRESS.setMessage(`Add guest ${data.index + 1} of ${data.guests.length}`);
                 //POST /booking/<booking-code/guests (The current URL)
                 $.post({
                     url:'',
@@ -1986,6 +1970,8 @@ a.scriptGuestBtn{
                 return a && b && c;
             }
 
+            PROGRESS.setMessage('Read template');
+
             const table = CSV.parse(loadedReader.result);
             const byGuest = [];
             const usedRows = [];
@@ -1999,6 +1985,7 @@ a.scriptGuestBtn{
 
             let verificationRow;
 
+            //Parse headers....
             for(var k = 0; k < headers.length; k++){
                 const header = headers[k];
                 switch(true){
@@ -2015,6 +2002,7 @@ a.scriptGuestBtn{
                 }
             }
 
+            //Parse the rest of the table and group by guest.
             for(var i = 1; i < table.length; i++){
                 if(!usedRows.includes(i)){
                     const row = table[i];
@@ -2102,6 +2090,8 @@ a.scriptGuestBtn{
         }
 
         function ImportComplete(arg){
+            PROGRESS.hide();
+
             switch(arg.status){
                 case 'OK':
                     break;
@@ -2110,6 +2100,8 @@ a.scriptGuestBtn{
             }
             window.location.reload();
         }
+
+        PROGRESS.setMessage('Uploading File');
 
         const reader = new FileReader();
         reader.onload = ()=>{DoCsvImport(reader).then(ImportComplete)}
@@ -2125,68 +2117,83 @@ a.scriptGuestBtn{
     //* The overnight report uses the daily manifest export to generate a simplified table.
     //*******************************
     function AddDailyManifestReportButtons(){
-        function cloneActionButton($template, id, text, icon, onClick){
-            const $cloneButton = $template.clone(true, false);
-            $cloneButton.attr({'id':id,
-                               'title':text});
-            $cloneButton.removeAttr('href');
-            $cloneButton.css({'margin-right':'10px'});
+        function cloneActionButtons($desktopTemplate, $mobileTemplate, id, text, icon, onClick){
+            function doClone($template, media){
+                const $cloneButton = $template.clone(true, false);
+                $cloneButton.attr({'id':`${id}${media}`,
+                                   'title':text});
+                $cloneButton.removeAttr('href');
+                $cloneButton.css({'margin-right':'10px'});
 
-            const $ico = $cloneButton.find('span[class^="Icon"]');
-            if($ico.length > 0){
-                $ico.empty();
-                $ico.html(icon);
-            }else{
-                $cloneButton.children('span').text(text);
+                const $ico = $cloneButton.find('span[class^="Icon"]');
+                if($ico.length > 0){
+                    $cloneButton.data('isIcon',true);
+                    $ico.empty();
+                    $ico.html(icon);
+                }else{
+                    $cloneButton.data('isIcon',false);
+                    $cloneButton.children('span').text(text);
+                }
+
+                $cloneButton.data('clickedState',false);
+
+                return $cloneButton;
             }
 
-            $cloneButton.on('click',function(event){
-                event.preventDefault();
-                onClick.call(this, event);
-            });
+            const $desktop = doClone($desktopTemplate, 'Desktop');
+            const $mobile = doClone($mobileTemplate, 'Mobile');
 
-            return $cloneButton;
+            function masterClick(event){
+                event.preventDefault();
+                const $btn = $(this);
+
+                if($btn.data('clickedState') == true){
+                    $desktop.text($desktop.attr('title'));
+                    $desktop.data('clickedState', false);
+                    $mobile.data('clickedState', false);
+
+                    DAILYMANIFEST.revertReplace();
+                }else{
+                    $desktop.text('Close Report');
+
+                    $desktop.data('clickedState', true);
+                    $mobile.data('clickedState', true);
+
+                    onClick.call(this, event);
+                }
+            }
+
+            $desktop.on('click', masterClick);
+            $mobile.on('click', masterClick);
+
+            return [$desktop, $mobile];
         }
 
-        (function AddDesktopButtons(){
-            if($('#overnightButtonDesktop').length != 0){console.log('#overnightButtonDesktop already exists'); return}
+        const test = (($('#overnightButtonDesktop').length != 0) && ($('#overnightButtonMobile').length !=0));
+        if(test){console.log('#overnightButtonDesktop &&#overnightButtonMobilealready exists'); return;}
 
-            const $newBookingButton = $('#bookingButtonDesktop');
-            if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
+        const $newBookingButton_desktop = $('#bookingButtonDesktop');
+        const $newBookingButton_mobile = $('#bookingButtonMobile');
 
-            //####### Overnight report
-            const $cloneButton1 = cloneActionButton($newBookingButton, 'overnightButtonDesktop', 'Overnight Report', MOON_ICON, DoConvertDailyManifest_2_overnight);
-            $cloneButton1.insertBefore($newBookingButton);
+        const $a = cloneActionButtons($newBookingButton_desktop, $newBookingButton_mobile, 'overnightButton', 'Overnight Report', MOON_ICON, DAILYMANIFEST.reports.overnight);
+        const $b = cloneActionButtons($newBookingButton_desktop, $newBookingButton_mobile, 'changeOverButton', 'Changeover Report', BED_ICON, DAILYMANIFEST.reports.changeOver);
+        const $c = cloneActionButtons($newBookingButton_desktop, $newBookingButton_mobile, 'dailyCheckinsButton', 'Days Checkins', CHECKIN_ICON, DAILYMANIFEST.reports.checkins);
 
-            //####### Changeover report
-            const $cloneButton2 = cloneActionButton($newBookingButton, 'changeOverButtonDesktop', 'Changeover Report', BED_ICON, DoConvertDailyManifest_2_changeover);
-            $cloneButton2.insertBefore($cloneButton1);
+        if($('#overnightButtonDesktop').length == 0){
+            $a[0].insertBefore($newBookingButton_desktop);
+            $b[0].insertBefore($a[0]);
+            $c[0].insertBefore($b[0]);
+        }else{
+            console.log('#overnightButtonDesktop already exists');
+        }
 
-            //####### Changeover report
-            const $cloneButton3 = cloneActionButton($newBookingButton, 'dailyCheckinsButtonDesktop', 'Days Checkins', CHECKIN_ICON, DoConvertDailyManifest_2_dailyCheckins);
-            $cloneButton3.insertBefore($cloneButton2);
-            
-        })();
-        (function AddMobileButtons(){
-            //'bookingButtonMobile
-            if($('#overnightButtonMobile').length != 0){console.log('#overnightButtonMobile already exists'); return}
-
-            const $newBookingButton = $('#bookingButtonMobile');
-            if($newBookingButton.length !== 1){console.log('#bookingButtonMobile not found'); return}
-
-            //####### Overnight report
-            const $cloneButton1 = cloneActionButton($newBookingButton, 'overnightButtonMobile', 'Overnight Report', MOON_ICON, DoConvertDailyManifest_2_overnight);
-            $cloneButton1.insertBefore($newBookingButton);
-
-            //####### Changeover report
-            const $cloneButton2 = cloneActionButton($newBookingButton, 'changeOverButtonMobile', 'Changeover Report', BED_ICON, DoConvertDailyManifest_2_changeover);
-            $cloneButton2.insertBefore($cloneButton1);
-
-            //####### Changeover report
-            const $cloneButton3 = cloneActionButton($newBookingButton, 'dailyCheckinsButtonMobile', 'Days Checkins', CHECKIN_ICON, DoConvertDailyManifest_2_dailyCheckins);
-            $cloneButton3.insertBefore($cloneButton2);
-
-        })();
+        if($('#overnightButtonMobile').length == 0){
+            $a[1].insertBefore($newBookingButton_mobile);
+            $b[1].insertBefore($a[1]);
+            $c[1].insertBefore($b[1]);
+        }else{
+            console.log('#overnightButtonMobile already exists');
+        }
     }
 
     //*******************************
