@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-02T13:30
+// @version      2025-11-02T14:04
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -1158,7 +1158,7 @@ a.scriptGuestBtn{
             function doSearchLoop(date_, leaving_, allDonePromise_, iterations = 0){
                 const allDonePromise = allDonePromise_ ?? $.Deferred();
 
-                PROGRESS.setMessage(`Checking day ${iterations + 1} of ${MAX_LOOK_AHEAD}...`);
+                PROGRESS.setMessage(`Checking day ${iterations} of ${MAX_LOOK_AHEAD}...`);
                 console.log(`Serach iteration: ${iterations}`);
 
                 if(iterations >= MAX_LOOK_AHEAD){
@@ -1242,7 +1242,7 @@ a.scriptGuestBtn{
             function doSearchLoop(date_, allDonePromise_, iterations = 0){
                 const allDonePromise = allDonePromise_ ?? $.Deferred();
 
-                PROGRESS.setMessage(`Checking day ${iterations + 1} of ${MAX_LOOK_AHEAD}...`);
+                PROGRESS.setMessage(`Checking day ${iterations} of ${MAX_LOOK_AHEAD}...`);
                 console.log(`Serach iteration: ${iterations}`);
 
                 if(iterations >= MAX_LOOK_AHEAD){
