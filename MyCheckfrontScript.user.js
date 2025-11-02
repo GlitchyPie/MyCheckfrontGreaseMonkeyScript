@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-02T11:04
+// @version      2025-11-02T11:47
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -232,6 +232,7 @@ console.log('Hello world');
             function CB(index, row){
                 if(index === 0){
                     headers = row;
+                    output.push(row);
                 }else{
                     const R = row;
                     for(var i=0;i < headers.length; i++){
@@ -251,7 +252,7 @@ console.log('Hello world');
         function TABLE_REMOVE_DUPLICATES(table){
             const l = table.length;
             const m = table[0].length;
-            const cleaned = [];
+            const cleaned = [table[0]];
             let test = false;
             for(var i = 1; i < l; i++){
                 const a = table[i][0];
@@ -279,7 +280,7 @@ console.log('Hello world');
             return PARSED_2_TABLE(BADLY_PARSE_CSV(data), headers);
         }
         function CSV_2_HTML(data,headers){
-            return TABLE_2_HTML(TABLE_REMOVE_DUPLICATES(CSV_2_TABLE(data, headers)), headers);
+            return TABLE_2_HTML(TABLE_REMOVE_DUPLICATES(CSV_2_TABLE(data, headers)));
         }
 
         function PARSED_2_TABLE(parsed, headers){
@@ -289,7 +290,13 @@ console.log('Hello world');
 
             const outputArray = [];
 
-            outputArray.push(headers.map((h)=>{if(Array.isArray(h)){return h[1];}else{return h;};}));
+            outputArray.push(headers.map((h)=>{
+                if(Array.isArray(h)){
+                    return h[0];
+                }else{
+                    return h;
+                };
+            }));
 
             for(var i = 1; i < parsed.length; i++){ //For each row in our data
                 const line = parsed[i];
@@ -364,16 +371,14 @@ console.log('Hello world');
             return outputArray;
         }
         function PARSED_2_HTML(parsed, headers){
-            return TABLE_2_HTML(TABLE_REMOVE_DUPLICATES(PARSED_2_TABLE(parsed,headers)), headers);
+            return TABLE_2_HTML(TABLE_REMOVE_DUPLICATES(PARSED_2_TABLE(parsed,headers)));
         }
-        function TABLE_2_HTML(table, headers){
+        function TABLE_2_HTML(table){
+            const headers = table[0];
+
             let out = '<table><thead><tr>';
             for(var h = 0; h < headers.length; h++){
-                if(Array.isArray(headers[h])){
-                    out += ('<th>' + headers[h][0] + '</th>');
-                }else{
-                    out += ('<th>' + headers[h] + '</th>');
-                }
+                out += ('<th>' + headers[h] + '</th>');
             }
             out += '</tr></thead><tbody>';
 
@@ -1122,8 +1127,8 @@ a.scriptGuestBtn{
                     const L = leaving_[i];
                     inLoop: for(var j = 1; j < checkins_.length; j++){
                         const C = checkins_[j];
-                        if(L['Product Name'] === C['Product Name']){
-                            if(L.Status.toLowerCase() != 'maintenance'){
+                         if(C.Status.toLowerCase() != 'maintenance'){
+                             if(L['Product Name'] === C['Product Name']){
                                 if(!Object.hasOwn(leaving_[i],'Next')){
                                     leaving_[i].Next = C;
                                     break inLoop;
