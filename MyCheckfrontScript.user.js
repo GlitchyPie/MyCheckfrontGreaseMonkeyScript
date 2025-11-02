@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-02T11:47
+// @version      2025-11-02T12:22
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -1091,10 +1091,13 @@ a.scriptGuestBtn{
             const leaving_bookings = [leaving_bookings_raw[0]];
 
             for(var i = 1; i < leaving_bookings_raw.length; i++){
-                const pn = leaving_bookings_raw[i]['Product Name'];
-                if(!addedProducts.includes(pn)){
-                    leaving_bookings.push(leaving_bookings_raw[i]);
-                    addedProducts.push(pn);
+                const L = leaving_bookings_raw[i]
+                if(L.Status.toLowerCase() != 'maintenance'){
+                    const pn = L['Product Name'];
+                    if(!addedProducts.includes(pn)){
+                        leaving_bookings.push(L);
+                        addedProducts.push(pn);
+                    }
                 }
             }
             addedProducts = undefined;
@@ -1209,7 +1212,7 @@ a.scriptGuestBtn{
             }
             const StartDate = new Date(searchStartDate);
 
-            const checkingIn = [];
+            const checkingIn = [[]];
 
             function GetAllCheckinsFor(dte_){
                 const D = $.Deferred();
@@ -1239,7 +1242,7 @@ a.scriptGuestBtn{
                     const Dnext = date_;
                     Dnext.setDate(Dnext.getDate()+1);
 
-                    const splice_args = data.filter((data_row)=>{return !alreadyHaveCheckin(data_row)})
+                    const splice_args = data.filter((data_row)=>{return Object.hasOwn(data_row,'Status') && data_row.Status.toLowerCase() != 'maintenance' && !alreadyHaveCheckin(data_row)})
                     splice_args.splice(0,0,checkingIn.length,0);
 
                     checkingIn.splice.apply(checkingIn, splice_args);
@@ -1251,8 +1254,7 @@ a.scriptGuestBtn{
             }
 
             doSearchLoop(searchStartDate).then((ar)=>{
-                const x = ar
-                return x.map((row)=>{
+                return ar.map((row)=>{
                     return {
                         'Product Name':row['Product Name'],
                         'Start Date':DATES.toYYYYMMDD(StartDate),
