@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-02T18:00
+// @version      2025-11-02T18:10
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -9,6 +9,7 @@
 // @grant        GM_download
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
 // ==/UserScript==
+
 const $J_Query = jQuery;
 const $J_Master = $J_Query.noConflict(true);
 
@@ -731,7 +732,7 @@ console.log('Hello world');
                     return `${days} days`;
             }
         }
-        //--------
+        //-------- Report generation functions
 
         function MakeOvernightReport(){
             //*******************************
@@ -762,7 +763,6 @@ console.log('Hello world');
             SPINNER.show();
             ConvertDailyManifest_2_OvernightReport_1();
         }
-
         function MakeChangeOverReport(){
             //Get the ending bookings
             function DoChangeOverDayReport_1(){
@@ -875,7 +875,6 @@ console.log('Hello world');
             SPINNER.show();
             DoChangeOverDayReport_1();
         }
-
         function MakeCheckinsReport(){
             function DoDailyCheckinsReport_1(){
                 const params = new URLSearchParams(window.location.search);
@@ -960,6 +959,8 @@ console.log('Hello world');
             SPINNER.show();
             DoDailyCheckinsReport_1();
         }
+
+        //--------
 
         return {
             replaceWith: replaceDailyManifestWith,
@@ -2170,7 +2171,7 @@ a.scriptGuestBtn{
         }
 
         const test = (($('#overnightButtonDesktop').length != 0) && ($('#overnightButtonMobile').length !=0));
-        if(test){console.log('#overnightButtonDesktop &&#overnightButtonMobilealready exists'); return;}
+        if(test){console.log('#overnightButtonDesktop && #overnightButtonMobile already exists'); return;}
 
         const $newBookingButton_desktop = $('#bookingButtonDesktop');
         const $newBookingButton_mobile = $('#bookingButtonMobile');
