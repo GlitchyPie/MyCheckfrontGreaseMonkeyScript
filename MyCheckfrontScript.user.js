@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-02T12:22
+// @version      2025-11-02T13:30
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -890,21 +890,32 @@ table.scriptTable.guests td:not([class]):first-child {
 }
 
 
-#changeoverTable thead th:nth-of-type(1){
-    border-right:none;
-}
-#changeoverTable thead th:nth-of-type(2){
+table.scriptTable.withCheckinColumn tr *:nth-child(1){
     width:1em;
-    text-align:right;
-    border-left:none;
-    padding-right:1em;
     white-space: nowrap;
+
+    border-right:none;
+
+    padding-right:2em;
 }
-#changeoverTable tr td:nth-of-type(2){
-    text-align:right;
-    border-left:none;
-    padding-right:1em;
+table.scriptTable.withCheckinColumn tr th:nth-of-type(1){
+}
+table.scriptTable.withCheckinColumn tr td:nth-of-type(1){
+}
+
+table.scriptTable.withCheckinColumn tr *:nth-child(2){
+    width:1em;
     white-space: nowrap;
+
+    border-left:none;
+
+    padding-right:1em;
+
+    text-align:right;
+}
+table.scriptTable.withCheckinColumn tr th:nth-of-type(2){
+}
+table.scriptTable.withCheckinColumn tr td:nth-of-type(2){
 }
 
 #my-spinner{
@@ -1180,6 +1191,7 @@ a.scriptGuestBtn{
             const $table = $(html);
             ApplyGenericTableFormatting($table);
             $table.attr('id','changeoverTable');
+            $table.addClass('withCheckinColumn');
 
             DAILYMANIFEST.replaceWith($table,'Changeovers');
 
@@ -1274,6 +1286,7 @@ a.scriptGuestBtn{
             const $table = $(html);
             ApplyGenericTableFormatting($table);
             $table.attr('id','dailyCheckTable');
+            $table.addClass('withCheckinColumn');
 
             DAILYMANIFEST.replaceWith($table,'Daily Checkins');
 
