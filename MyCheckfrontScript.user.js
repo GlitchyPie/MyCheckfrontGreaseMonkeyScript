@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-10-23T11:10
+// @version      2025-11-02T11:04
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -744,10 +744,39 @@ console.log('Hello world');
         }
     })();
 
+    
+    const PROGRESS = (function(){
+        let $progressBox;
+        
+        function createProgress(){
+            const $p = $('#proooogress');
+            if($p.length > 0){
+                $progressBox = $p;
+            }else{
+                $progressBox = $('<div id="proooogress"><h1></h1></div>');
+                $('body').append($progressBox);
+            }
+        }
+        function setProgressMessage(message){
+            createProgress();
+            $progressBox.show();
+            $progressBox.find('h1').text(message);
+        }
+        function hideProgress(){
+            createProgress();
+            $progressBox.hide();
+        }
+
+        return {
+            setMessage:setProgressMessage,
+            hide:hideProgress,
+        }
+    })();
     //================================ Constants ======================================
 
     //                     Column Header,  Column Value(s) [Label,Value]
     const OVERNIGHT_HEADERS = [['Room', '{Product Name}'],
+                               ['Name', [['Booking', '{First name} {Surname}'],['Guest','{Guest First Name} {Guest Last Name}']]],
                                ['Checkin Status',[['Booking','{Check In / Out}'],['Guest','{Guest Check In Status}']]],
                                ['Accessability needs','{Accessibility requirements}']
                               ];
@@ -777,6 +806,12 @@ console.log('Hello world');
     */
     const BED_ICON = `
 <svg width="326" height="222.18" version="1.1" viewBox="0 0 326 222.18" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"><path d="m43.376 190.66c-3.033 0-5.5-2.467-5.5-5.5v-27.645h-5.876v-87.999c0-2.209-1.792-4-4-4h-24c-2.209 0-4 1.791-4 4v140.67c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-6h179v-13.523z"/><path d="m189.56 58.848c3.948-2.166 8.101-4.635 12.398-7.251 0.152-0.287 0.3-0.566 0.457-0.865 0.77-1.471 1.534-2.925 2.311-4.341-5.946 3.645-11.66 7.127-16.963 10.02 0.319 0.364 0.618 0.748 0.895 1.153 0.312 0.458 0.612 0.882 0.902 1.284z"/><path d="m92.188 134.32c-0.701 0.991-1.393 1.993-2.08 3h-46.732c-1.378 0-2.5 1.121-2.5 2.5v45.334c0 1.379 1.122 2.5 2.5 2.5h167.62v-28.079c-4.971-1.646-9.922-3.351-14.838-5.047-24.058-8.303-48.934-16.888-72.887-16.888-12.415 0-23.689 2.244-34.305 6.846 21.963-34.584 53.021-59.959 79.109-74.689-0.472-0.919-0.816-1.877-1.033-2.853-24.336 13.667-53.005 36.507-74.853 67.376z"/><path d="m287.56 55.102c3.873 29.122 10.442 72.451 19.23 108.55-10.516 4.865-21.587 7.435-33.705 7.832v16.169h10.955c1.378 0 2.5-1.121 2.5-2.5v-12.037c1.006-0.177 2.006-0.37 3-0.58v12.617c0 3.033-2.467 5.5-5.5 5.5h-10.955v13.523h20.913v6c0 2.209 1.791 4 4 4h24c2.208 0 4-1.791 4-4v-71.334c0-2.209-1.792-4-4-4h-18.459c-5.721-28.721-10.128-58.486-13.022-80.258-0.962 0.198-1.947 0.37-2.957 0.514z"/><path d="m221.05 33.546c0.583-0.099 1.132-0.147 1.675-0.147h29.002c1.484-2.674 2.436-5.682 2.721-8.884 4.253-1.267 8.484-2.163 12.662-2.582 0.061-1.034 0.256-2.065 0.592-3.071-4.365 0.37-8.771 1.247-13.188 2.509-0.589-11.902-10.423-21.371-22.472-21.371-12.426 0-22.5 10.073-22.5 22.5 0 4.629 1.399 8.93 3.796 12.506 0.319 0.476 0.659 0.937 1.013 1.386 1.935-1.517 4.125-2.535 6.699-2.846z"/><path d="m205.96 52.587c-2.476 4.73-8.273 15.809-11.523 15.998-0.057-6e-3 -3.06 0.067-9.083-8.768-2.49-3.652-7.468-4.59-11.116-2.103-3.65 2.489-4.592 7.466-2.103 11.117 7.221 10.591 14.498 15.757 22.216 15.756 0.337 0 0.677-0.01 1.016-0.03 8.816-0.513 14.866-7.453 19.633-15.254v140.52c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-90.272h4.635v90.272c0 6.83 5.537 12.363 12.363 12.363 6.828 0 12.365-5.533 12.365-12.363v-158.05c1.832 0.042 3.641 0.073 5.392 0.073 14.189 0 25.354-1.715 28.064-10.666 2.975-9.819-7.484-17.965-19.229-25.307-3.748-2.341-8.684-1.202-11.024 2.544-2.342 3.747-1.202 8.682 2.544 11.024 4.05 2.531 6.802 4.529 8.664 6.044-3.805 0.366-9.427 0.441-16.819 0.222-1.713-0.051-3.167-0.092-4.229-0.092-0.371 0-0.732 0.034-1.09 0.083h-38.635c-0.459 0-0.907 0.048-1.344 0.124-7.075 0.822-10.964 8.242-15.425 16.766z"/></svg>
+`;
+    /*
+    <a href="https://www.vecteezy.com/free-vector/symbol">Symbol Vectors by Vecteezy</a>
+    */
+    const CHECKIN_ICON = `
+    <svg width="3759.2" height="3657.1" version="1.1" viewBox="0 0 3759.2 3657.1" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="d"/><clipPath id="c"><path d="m2498.9 4410.4c-284.96 0-515.97-20.82-515.97-46.488 0-25.684 231.01-46.492 515.97-46.492 284.95 0 515.97 20.809 515.97 46.492 0 25.668-231.02 46.488-515.97 46.488"/></clipPath><clipPath id="b"><path d="m2498.9 4410.4c-284.96 0-515.97-20.82-515.97-46.488 0-25.684 231.01-46.492 515.97-46.492 284.95 0 515.97 20.809 515.97 46.492 0 25.668-231.02 46.488-515.97 46.488"/></clipPath><radialGradient id="a" cx="0" cy="0" r="281.22" gradientTransform="matrix(1.8347 0 0 .16533 2498.9 4363.9)" gradientUnits="userSpaceOnUse"><stop stop-color="#969797" offset="0"/><stop stop-color="#969897" offset=".0078125"/><stop stop-color="#969898" offset=".011719"/><stop stop-color="#979898" offset=".015625"/><stop stop-color="#979999" offset=".019531"/><stop stop-color="#989999" offset=".023438"/><stop stop-color="#999a9a" offset=".027344"/><stop stop-color="#999a9a" offset=".03125"/><stop stop-color="#999a9a" offset=".035156"/><stop stop-color="#9a9a9b" offset=".039062"/><stop stop-color="#9a9b9b" offset=".042969"/><stop stop-color="#9b9b9b" offset=".046875"/><stop stop-color="#9b9b9c" offset=".050781"/><stop stop-color="#9c9c9c" offset=".054688"/><stop stop-color="#9c9c9d" offset=".058594"/><stop stop-color="#9d9d9d" offset=".0625"/><stop stop-color="#9d9d9d" offset=".066406"/><stop stop-color="#9d9e9d" offset=".070312"/><stop stop-color="#9e9e9e" offset=".074219"/><stop stop-color="#9e9f9e" offset=".078125"/><stop stop-color="#9f9f9f" offset=".082031"/><stop stop-color="#9f9f9f" offset=".085938"/><stop stop-color="#9fa0a0" offset=".089844"/><stop stop-color="#a0a0a0" offset=".09375"/><stop stop-color="#a0a1a1" offset=".097656"/><stop stop-color="#a1a1a1" offset=".10156"/><stop stop-color="#a2a2a2" offset=".10547"/><stop stop-color="#a2a2a2" offset=".10938"/><stop stop-color="#a3a3a3" offset=".11328"/><stop stop-color="#a3a4a3" offset=".11719"/><stop stop-color="#a4a4a4" offset=".12109"/><stop stop-color="#a4a5a4" offset=".125"/><stop stop-color="#a5a5a5" offset=".12891"/><stop stop-color="#a5a6a5" offset=".13281"/><stop stop-color="#a6a6a6" offset=".13672"/><stop stop-color="#a7a7a6" offset=".14062"/><stop stop-color="#a7a7a7" offset=".14453"/><stop stop-color="#a8a8a7" offset=".14844"/><stop stop-color="#a8a8a8" offset=".15234"/><stop stop-color="#a9a9a8" offset=".15625"/><stop stop-color="#a9a9a8" offset=".16016"/><stop stop-color="#a9a9a9" offset=".16406"/><stop stop-color="#aaaaa9" offset=".16797"/><stop stop-color="#aaaaa9" offset=".17188"/><stop stop-color="#abaaa9" offset=".17578"/><stop stop-color="#ababaa" offset=".17969"/><stop stop-color="#acabaa" offset=".18359"/><stop stop-color="#acacab" offset=".1875"/><stop stop-color="#adacab" offset=".19141"/><stop stop-color="#adadac" offset=".19531"/><stop stop-color="#aeadac" offset=".19922"/><stop stop-color="#aeaead" offset=".20312"/><stop stop-color="#aeaead" offset=".20703"/><stop stop-color="#afafae" offset=".21094"/><stop stop-color="#afafae" offset=".21484"/><stop stop-color="#b0b0af" offset=".21875"/><stop stop-color="#b0b0af" offset=".22266"/><stop stop-color="#b0b1b0" offset=".22656"/><stop stop-color="#b1b1b0" offset=".23047"/><stop stop-color="#b1b1b1" offset=".23438"/><stop stop-color="#b1b1b1" offset=".23828"/><stop stop-color="#b2b2b1" offset=".24219"/><stop stop-color="#b2b2b2" offset=".24609"/><stop stop-color="#b3b3b2" offset=".25"/><stop stop-color="#b3b4b3" offset=".25391"/><stop stop-color="#b4b4b3" offset=".26172"/><stop stop-color="#b5b5b4" offset=".26953"/><stop stop-color="#b6b6b5" offset=".27734"/><stop stop-color="#b7b7b6" offset=".28516"/><stop stop-color="#b8b7b7" offset=".29297"/><stop stop-color="#b9b8b8" offset=".30078"/><stop stop-color="#bab9b8" offset=".30859"/><stop stop-color="#bbbab9" offset=".31641"/><stop stop-color="#bcbbba" offset=".32422"/><stop stop-color="#bcbcbb" offset=".33203"/><stop stop-color="#bdbdbb" offset=".33984"/><stop stop-color="#bebebc" offset=".34766"/><stop stop-color="#bfbebd" offset=".35547"/><stop stop-color="#c0bfbd" offset=".36328"/><stop stop-color="#c1c0be" offset=".37109"/><stop stop-color="#c2c1c0" offset=".37891"/><stop stop-color="#c2c2c1" offset=".38672"/><stop stop-color="#c3c2c1" offset=".39453"/><stop stop-color="#c4c3c2" offset=".39844"/><stop stop-color="#c4c3c2" offset=".40234"/><stop stop-color="#c5c4c2" offset=".40625"/><stop stop-color="#c6c5c3" offset=".41016"/><stop stop-color="#c6c6c4" offset=".41797"/><stop stop-color="#c7c6c5" offset=".42578"/><stop stop-color="#c8c7c6" offset=".43359"/><stop stop-color="#c9c8c7" offset=".44141"/><stop stop-color="#cac9c8" offset=".44922"/><stop stop-color="#cbcac9" offset=".45703"/><stop stop-color="#cccbc9" offset=".46484"/><stop stop-color="#cdccca" offset=".47266"/><stop stop-color="#cecdcb" offset=".48047"/><stop stop-color="#cfcecc" offset=".48828"/><stop stop-color="#d0cfcd" offset=".49609"/><stop stop-color="#d0d0ce" offset=".50391"/><stop stop-color="#d1d0cf" offset=".50781"/><stop stop-color="#d1d1cf" offset=".51172"/><stop stop-color="#d2d1d0" offset=".51562"/><stop stop-color="#d2d1d0" offset=".51953"/><stop stop-color="#d3d2d1" offset=".52344"/><stop stop-color="#d3d3d2" offset=".53516"/><stop stop-color="#d4d3d2" offset=".53906"/><stop stop-color="#d4d4d3" offset=".54297"/><stop stop-color="#d5d4d3" offset=".54688"/><stop stop-color="#d5d5d3" offset=".55078"/><stop stop-color="#d6d5d4" offset=".55469"/><stop stop-color="#d6d6d4" offset=".55859"/><stop stop-color="#d7d6d4" offset=".5625"/><stop stop-color="#d7d6d5" offset=".56641"/><stop stop-color="#d8d7d5" offset=".57031"/><stop stop-color="#d8d7d6" offset=".57422"/><stop stop-color="#d9d8d6" offset=".57812"/><stop stop-color="#d9d8d7" offset=".58203"/><stop stop-color="#dad9d8" offset=".58594"/><stop stop-color="#dad9d8" offset=".58984"/><stop stop-color="#dbdad8" offset=".59375"/><stop stop-color="#dbdad9" offset=".59766"/><stop stop-color="#dcdbd9" offset=".60156"/><stop stop-color="#dcdbda" offset=".61328"/><stop stop-color="#dddcda" offset=".61719"/><stop stop-color="#dddcdb" offset=".62109"/><stop stop-color="#dddddb" offset=".625"/><stop stop-color="#dededc" offset=".62891"/><stop stop-color="#dfdfdd" offset=".63672"/><stop stop-color="#e0dfde" offset=".64453"/><stop stop-color="#e1e0df" offset=".65234"/><stop stop-color="#e1e1e0" offset=".66016"/><stop stop-color="#e2e2e1" offset=".66797"/><stop stop-color="#e2e3e2" offset=".67578"/><stop stop-color="#e3e4e2" offset=".68359"/><stop stop-color="#e4e4e3" offset=".69141"/><stop stop-color="#e5e5e4" offset=".69922"/><stop stop-color="#e6e6e5" offset=".70703"/><stop stop-color="#e7e7e5" offset=".71484"/><stop stop-color="#e7e8e6" offset=".72266"/><stop stop-color="#e8e9e7" offset=".73047"/><stop stop-color="#e9eae8" offset=".73828"/><stop stop-color="#eaebea" offset=".74609"/><stop stop-color="#ebebea" offset=".76172"/><stop stop-color="#ececeb" offset=".76562"/><stop stop-color="#ececeb" offset=".76953"/><stop stop-color="#ededec" offset=".77344"/><stop stop-color="#ededec" offset=".77734"/><stop stop-color="#ededed" offset=".78125"/><stop stop-color="#edeeed" offset=".78516"/><stop stop-color="#eee" offset=".78906"/><stop stop-color="#eee" offset=".79297"/><stop stop-color="#efefef" offset=".79688"/><stop stop-color="#efefef" offset=".80078"/><stop stop-color="#f0f0ef" offset=".80469"/><stop stop-color="#f0f0f0" offset=".80859"/><stop stop-color="#f1f0f0" offset=".8125"/><stop stop-color="#f1f1f1" offset=".81641"/><stop stop-color="#f2f2f2" offset=".82422"/><stop stop-color="#f3f3f3" offset=".83203"/><stop stop-color="#f4f4f4" offset=".83984"/><stop stop-color="#f5f5f5" offset=".84766"/><stop stop-color="#f6f7f7" offset=".86328"/><stop stop-color="#f7f8f8" offset=".87891"/><stop stop-color="#f8f8f8" offset=".89062"/><stop stop-color="#f8f8f8" offset=".89453"/><stop stop-color="#f9f9f8" offset=".89844"/><stop stop-color="#f9f9f9" offset=".90234"/><stop stop-color="#fafafa" offset=".91406"/><stop stop-color="#fbfbfa" offset=".92188"/><stop stop-color="#fbfcfc" offset=".92969"/><stop stop-color="#fcfdfd" offset=".94531"/><stop stop-color="#fdfefe" offset=".95703"/><stop stop-color="#fefefe" offset=".96484"/><stop stop-color="#fefefe" offset=".98047"/><stop stop-color="#fff" offset="1"/></radialGradient></defs><g transform="translate(-620.38 -386.45)" clip-path="url(#d)"><g clip-path="url(#c)"><g clip-path="url(#b)"><path d="m1982.9 4317.4v92.98h1031.9v-92.98z" fill="url(#a)"/></g></g></g><g transform="translate(-620.38 -386.45)" fill="#201c1c"><path d="m3420.7 4043.5h686.39c15.891 0 28.891-13 28.891-28.883v-1611.7c0-15.891-13-28.891-28.891-28.891h-686.39c-15.891 0-28.891 13-28.891 28.891v1611.7c0 15.883 13 28.883 28.891 28.883"/><path d="m3340.8 809.53c0 233.66 189.42 423.08 423.09 423.08 233.66 0 423.08-189.42 423.08-423.08 0-233.66-189.42-423.08-423.08-423.08-233.67 0-423.09 189.42-423.09 423.08"/><path d="m3148.2 1666.8v823.91c0 155.71 127.4 283.1 283.1 283.1h665.26c155.71 0 283.1-127.39 283.1-283.1v-823.91c0-155.7-127.39-283.1-283.1-283.1h-665.26c-155.7 0-283.1 127.4-283.1 283.1"/><path d="m620.38 2291.1v1752.4h149v-1752.4c0-75.988 61.797-137.82 137.82-137.82h2092v-149.01h-2092c-158.16 0-286.83 128.67-286.83 286.83"/><path d="m1253.9 1666.8v337.45h1231.5v-337.45c0-155.7-127.4-283.1-283.11-283.1h-665.25c-155.71 0-283.11 127.4-283.11 283.1"/><path d="m1446.6 809.53c0 233.66 189.42 423.08 423.08 423.08 233.66 0 423.08-189.42 423.08-423.08 0-233.66-189.42-423.08-423.08-423.08-233.66 0-423.08 189.42-423.08 423.08"/><path d="m1828.5 2886.7c-22.77 0-41.297 18.527-41.297 41.289v297.5c0 22.77 18.527 41.289 41.297 41.289h376.53c22.77 0 41.289-18.52 41.289-41.289v-297.5c0-22.762-18.52-41.289-41.289-41.289zm376.53 469.29h-376.53c-71.957 0-130.5-58.539-130.5-130.5v-297.5c0-71.961 58.543-130.5 130.5-130.5h376.53c71.961 0 130.5 58.539 130.5 130.5v297.5c0 71.961-58.539 130.5-130.5 130.5"/><path d="m1539.3 3080.6c-124.39 29.758-217.61 142.15-217.61 275.32v404.51c0 133.17 93.219 245.56 217.61 275.32v-955.15"/><path d="m2440.8 3073.1c-3.9883-0.1719-8-0.3008-12.039-0.3008h-815.65v970.71h815.65c4.0391 0 8.0508-0.1329 12.039-0.3008v-970.11"/><path d="m2514.5 3086.2v943.89c114.1-36.562 197.31-143.86 197.31-269.69v-404.51c0-125.83-83.211-233.13-197.31-269.69"/></g></svg>
 `;
 
     const DEFAULT_COLUMN_OPTS = [
@@ -911,6 +946,19 @@ a.scriptGuestBtn{
 #sidebar-wrapper .btn.importBtn{
     margin-top:2px;
 }
+
+#proooogress {
+	position: absolute;
+	left: 5px;
+	top: 5px;
+	z-index: 9999;
+	background-color: white;
+	border: 2px solid black;
+	border-radius: 5px;
+	padding: 5px;
+    width:51%;
+    display:none;
+}
 `;
 
     $.cssStyleSheet.createSheet(MY_CSS);
@@ -990,6 +1038,7 @@ a.scriptGuestBtn{
         //* Request the export form, perform the request for the CSV data, and pass it over to step 2
         //*******************************
         function ConvertDailyManifest_2_OvernightReport_1(){
+            PROGRESS.setMessage('Load bookings...');
             DAILYMANIFEST.export.ongoing().then(ConvertDailyManifest_2_OvernightReport_2);
         }
 
@@ -1008,6 +1057,7 @@ a.scriptGuestBtn{
 
             $('#overnightButtonDesktop').text('Close Report');
 
+            PROGRESS.hide();
             SPINNER.hide();
         }
 
@@ -1026,6 +1076,7 @@ a.scriptGuestBtn{
 
         //Get the ending bookings
         function DoChangeOverDayReport_1(){
+            PROGRESS.setMessage('Load chekouts...');
             DAILYMANIFEST.export.checkouts().then(DoChangeOverDayReport_2);
         }
 
@@ -1088,6 +1139,7 @@ a.scriptGuestBtn{
             function doSearchLoop(date_, leaving_, allDonePromise_, iterations = 0){
                 const allDonePromise = allDonePromise_ ?? $.Deferred();
 
+                PROGRESS.setMessage(`Checking day ${iterations + 1} of ${MAX_LOOK_AHEAD}...`);
                 console.log(`Serach iteration: ${iterations}`);
 
                 if(iterations >= MAX_LOOK_AHEAD){
@@ -1125,6 +1177,7 @@ a.scriptGuestBtn{
 
             $('#changeOverButtonDesktop').text('Close Report');
 
+            PROGRESS.hide();
             SPINNER.hide();
         }
 
@@ -1135,6 +1188,101 @@ a.scriptGuestBtn{
         }else{
             DAILYMANIFEST.revertReplace();
             $('#changeOverButtonDesktop').text('Changeover Report');
+        }
+
+    }
+
+    function DoConvertDailyManifest_2_dailyCheckins(){
+        const MAX_LOOK_AHEAD = DAILYMANIFEST.changeOverReportUtils.max_look_ahead;
+
+        function DoDailyCheckinsReport_1(){
+            const params = new URLSearchParams(window.location.search);
+            const dateStr = params.get('date');
+            let searchStartDate = new Date();
+            if(dateStr != undefined && dateStr != ''){
+                searchStartDate = new Date(dateStr);
+            }
+            const StartDate = new Date(searchStartDate);
+
+            const checkingIn = [];
+
+            function GetAllCheckinsFor(dte_){
+                const D = $.Deferred();
+                DAILYMANIFEST.export.checkins(dte_).then((data_,result_,xhr_,formData_)=>{
+                    D.resolve(CSV.parse(data_));
+                });
+
+                return D.promise();
+            }
+            function alreadyHaveCheckin(row){
+                return checkingIn.some((e)=>{return e['Product Name'] == row['Product Name']});
+            }
+
+
+            function doSearchLoop(date_, allDonePromise_, iterations = 0){
+                const allDonePromise = allDonePromise_ ?? $.Deferred();
+
+                PROGRESS.setMessage(`Checking day ${iterations + 1} of ${MAX_LOOK_AHEAD}...`);
+                console.log(`Serach iteration: ${iterations}`);
+
+                if(iterations >= MAX_LOOK_AHEAD){
+                    allDonePromise.resolve(checkingIn);
+                    return allDonePromise.promise();
+                }
+
+                GetAllCheckinsFor(date_).then((data)=>{
+                    const Dnext = date_;
+                    Dnext.setDate(Dnext.getDate()+1);
+
+                    const splice_args = data.filter((data_row)=>{return !alreadyHaveCheckin(data_row)})
+                    splice_args.splice(0,0,checkingIn.length,0);
+
+                    checkingIn.splice.apply(checkingIn, splice_args);
+
+                    setTimeout(doSearchLoop(Dnext,allDonePromise, iterations+1),250);
+                })
+
+                return allDonePromise.promise();
+            }
+
+            doSearchLoop(searchStartDate).then((ar)=>{
+                const x = ar
+                return x.map((row)=>{
+                    return {
+                        'Product Name':row['Product Name'],
+                        'Start Date':DATES.toYYYYMMDD(StartDate),
+                        'Start Time':'00:00:00',
+                        'End Date':DATES.toYYYYMMDD(StartDate),
+                        'End Time':'00:00:00',
+                        'Next':row,
+                    }
+                });
+            }).then(MakeTable);
+        }
+
+        function MakeTable(checkingInAr){
+
+            const html = CSV.toHTML(checkingInAr, CHANGEOVER_HEADERS);
+
+            const $table = $(html);
+            ApplyGenericTableFormatting($table);
+            $table.attr('id','dailyCheckTable');
+
+            DAILYMANIFEST.replaceWith($table,'Daily Checkins');
+
+            $('#dailyCheckinsButtonDesktop').text('Close Report');
+
+            PROGRESS.hide();
+            SPINNER.hide();
+        }
+
+        const $table = $('#dailyCheckTable');
+        if($table.length === 0){
+            SPINNER.show();
+            DoDailyCheckinsReport_1();
+        }else{
+            DAILYMANIFEST.revertReplace();
+            $('#dailyCheckinsButtonDesktop').text('Daily Chekins');
         }
 
     }
@@ -1957,55 +2105,49 @@ a.scriptGuestBtn{
     //* The overnight report uses the daily manifest export to generate a simplified table.
     //*******************************
     function AddDailyManifestReportButtons(){
-        function overNightReportBtnClick(event){
-            event.preventDefault();
-            DoConvertDailyManifest_2_overnight();
-        }
-        function changeOverReportBtnClick(event){
-            event.preventDefault();
-            DoConvertDailyManifest_2_changeover();
-        }
-        function configureOverNightReportBtnClonedButton($cloneButton, id){
+        function cloneActionButton($template, id, text, icon, onClick){
+            const $cloneButton = $template.clone(true, false);
             $cloneButton.attr({'id':id,
-                               'title':'Overnight Report'});
+                               'title':text});
             $cloneButton.removeAttr('href');
             $cloneButton.css({'margin-right':'10px'});
 
-            $cloneButton.on('click',overNightReportBtnClick);
-        }
-        function configureChangeOverBtnClonedButton($cloneButton, id){
-            $cloneButton.attr({'id':id,
-                               'title':'Changeover Report'});
-            $cloneButton.removeAttr('href');
-            $cloneButton.css({'margin-right':'10px'});
+            const $ico = $cloneButton.find('span[class^="Icon"]');
+            if($ico.length > 0){
+                $ico.empty();
+                $ico.html(icon);
+            }else{
+                $cloneButton.children('span').text(text);
+            }
 
-            $cloneButton.on('click',changeOverReportBtnClick);
+            $cloneButton.on('click',function(event){
+                event.preventDefault();
+                onClick.call(this, event);
+            });
+
+            return $cloneButton;
         }
 
-        (function AddDesktopButton(){
+        (function AddDesktopButtons(){
             if($('#overnightButtonDesktop').length != 0){console.log('#overnightButtonDesktop already exists'); return}
 
             const $newBookingButton = $('#bookingButtonDesktop');
             if($newBookingButton.length !== 1){console.log('#bookingButtonDesktop not found'); return}
 
             //####### Overnight report
-            const $cloneButton = $newBookingButton.clone(true, false);
-
-            configureOverNightReportBtnClonedButton($cloneButton,'overnightButtonDesktop');
-
-            $cloneButton.children('span').text('Overnight Report');
-            $cloneButton.insertBefore($newBookingButton);
+            const $cloneButton1 = cloneActionButton($newBookingButton, 'overnightButtonDesktop', 'Overnight Report', MOON_ICON, DoConvertDailyManifest_2_overnight);
+            $cloneButton1.insertBefore($newBookingButton);
 
             //####### Changeover report
-            const $cloneButton2 = $newBookingButton.clone(true, false);
+            const $cloneButton2 = cloneActionButton($newBookingButton, 'changeOverButtonDesktop', 'Changeover Report', BED_ICON, DoConvertDailyManifest_2_changeover);
+            $cloneButton2.insertBefore($cloneButton1);
 
-            configureChangeOverBtnClonedButton($cloneButton2,'changeOverButtonDesktop');
-
-            $cloneButton2.children('span').text('Changeover Report');
-            $cloneButton2.insertBefore($cloneButton);
+            //####### Changeover report
+            const $cloneButton3 = cloneActionButton($newBookingButton, 'dailyCheckinsButtonDesktop', 'Days Checkins', CHECKIN_ICON, DoConvertDailyManifest_2_dailyCheckins);
+            $cloneButton3.insertBefore($cloneButton2);
             
         })();
-        (function AddDesktopButton(){
+        (function AddMobileButtons(){
             //'bookingButtonMobile
             if($('#overnightButtonMobile').length != 0){console.log('#overnightButtonMobile already exists'); return}
 
@@ -2013,26 +2155,16 @@ a.scriptGuestBtn{
             if($newBookingButton.length !== 1){console.log('#bookingButtonMobile not found'); return}
 
             //####### Overnight report
-            const $cloneButton = $newBookingButton.clone(true, false);
-
-            configureOverNightReportBtnClonedButton($cloneButton,'overnightButtonMobile');
-
-            const $iconSpan = $cloneButton.find('span[class^="Icon"]');
-            $iconSpan.empty();
-            $iconSpan.html(MOON_ICON);
-
-            $cloneButton.insertBefore($newBookingButton);
+            const $cloneButton1 = cloneActionButton($newBookingButton, 'overnightButtonMobile', 'Overnight Report', MOON_ICON, DoConvertDailyManifest_2_overnight);
+            $cloneButton1.insertBefore($newBookingButton);
 
             //####### Changeover report
-            const $cloneButton2 = $newBookingButton.clone(true, false);
+            const $cloneButton2 = cloneActionButton($newBookingButton, 'changeOverButtonMobile', 'Changeover Report', BED_ICON, DoConvertDailyManifest_2_changeover);
+            $cloneButton2.insertBefore($cloneButton1);
 
-            configureChangeOverBtnClonedButton($cloneButton2,'changeOverButtonMobile');
-
-            const $iconSpan2 = $cloneButton2.find('span[class^="Icon"]');
-            $iconSpan2.empty();
-            $iconSpan2.html(BED_ICON);
-
-            $cloneButton2.insertBefore($cloneButton);
+            //####### Changeover report
+            const $cloneButton3 = cloneActionButton($newBookingButton, 'dailyCheckinsButtonMobile', 'Days Checkins', CHECKIN_ICON, DoConvertDailyManifest_2_dailyCheckins);
+            $cloneButton3.insertBefore($cloneButton2);
 
         })();
     }
