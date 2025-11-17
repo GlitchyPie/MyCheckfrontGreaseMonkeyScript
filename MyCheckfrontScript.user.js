@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-02T18:10
+// @version      2025-11-17T09:07
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -9,7 +9,6 @@
 // @grant        GM_download
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
 // ==/UserScript==
-
 const $J_Query = jQuery;
 const $J_Master = $J_Query.noConflict(true);
 
@@ -429,6 +428,38 @@ console.log('Hello world');
         }
     })();
 
+    const SALES_REPORT = (function(){
+        function getBookingItemSalesReport_fromTo(start, end){
+            const args = {
+                'report_id':'reports-sales-bookingitem',
+                'scope':'booking_item',
+                'date_src':'end_date',
+                'date':'C',
+                'start_date':start,
+                'end_date':end,
+                'sidx':'day',
+                'sord':'asc',
+            }
+            /*
+            const args2 = new URLSearchParams();
+            args2.set('report_id','reports-sales-bookingitem');
+            args2.set('scope','booking_item');
+            args2.set('date_src','end_date');
+            args2.set('date','C');
+            args2.set('start_date',DATES.toYYYYMMDD(start));
+            args2.set('end_date',DATES.toYYYYMMDD(end));
+            args2.set('sidx','day');
+            args2.set('sord','asc');
+            */
+            return CSV.export('/reports/sales/', args)
+        }
+
+
+        return {
+            from_to:getBookingItemSalesReport_fromTo,
+        }
+    })();
+
     const DATES = (function(){
         function toYYYYMMDD(dte){
             const YYYY= `${dte.getFullYear()}`;
@@ -613,15 +644,51 @@ console.log('Hello world');
         const MAX_LOOK_AHEAD = 30;
 
         function ManifestRow_SingleTwinDouble(row){
+            function hasFigure(name,row,outOb){
+                let N = name;
+                if(Object.hasOwn(row, `${name} #`)){
+                    N = `${name} #`;
+                }
+                if((row[N] != undefined) && (row[N] != '') && (row[N] != '0')){
+                    outOb.out = row[N];
+                    return true;
+                }else{
+                    outOb.out = null;
+                    return false;
+                }
+            }
+            const outOb = {out:null};
             switch(true){
-                case(row['Upgrade to a Twin room'] == '1'):
+//--------------------------------------------------------------------------
+                case(hasFigure('Classroom', row, outOb)):
+                    return `Classroom - ${outOb.out}`;
+
+                case(hasFigure('Theatre', row, outOb)):
+                    return `Theatre - ${outOb.out}`;
+
+                case(hasFigure('Boardroom', row, outOb)):
+                    return `Boardroom - ${outOb.out}`;
+
+                case(hasFigure('U Shape', row, outOb)):
+                    return `U Shape - ${outOb.out}`;
+
+                case(hasFigure('Other', row, outOb)):
+                    return `Other - ${outOb.out}`;
+//--------------------------------------------------------------------------
+                case(hasFigure('Upgrade to a Twin room', row ,outOb)):
                     return 'Twin';
-                case(row['Upgrade to a Double room'] == '1'):
+
+                case(hasFigure('Upgrade to a Double room', row, outOb)):
                     return 'Double';
-                case(row['Single'] == '1'):
+
+                case(hasFigure('Single', row, outOb)):
                     return 'Single';
+//--------------------------------------------------------------------------
+                case(hasFigure('No of Guests', row, outOb)):
+                    return `${outOb.out} beds`;
+//--------------------------------------------------------------------------
                 default:
-                    return `${row['No of Guests']} beds`;
+                    return '?';
             }
         }
         function ManifestRow_RoomType(row){
@@ -634,13 +701,13 @@ console.log('Hello world');
                     return `${ManifestRow_SingleTwinDouble(row)} (VOL)`;
                     break;
                 case(status == 'gse tutor'):
-                    return 'GSE (Tutor)';
+                    return `GSE Tutor`;
                     break;
                 case(status == 'm\'arch 5th yrs'):
-                    return 'GSE (Student)';
+                    return `GSE Student`;
                     break;
                 case(status == 'gse'):
-                    return 'GSE (Student)';
+                    return `GSE Student`;
                     break;
                 case(status == 'gse provisional'):
                     return 'GSE (Unalocated?)';
@@ -988,7 +1055,159 @@ console.log('Hello world');
                 daysTillNext:ManifestRow_DaysTillNext,
                 roomTypeNext:ManifestRow_RoomType_next,
                 accessabilityReqNext:ManifestRow_Accessability_next,
+            },
+        }
+    })();
+
+    const CUSTOMER_CALENDAR = (function(){
+        const _cache = {};
+
+        function getCalDates(){
+            const datestr = $('#date').val().split('/');
+            const weeks = parseInt($('#weeks').val());
+            const days = weeks * 7;
+            const start = new Date(parseInt(`20${datestr[2]}`), parseInt(datestr[1]) - 1, parseInt(datestr[0]));
+            const end = new Date(start);
+            end.setDate(end.getDate() + days);
+            return {startDate:start,endDate:end};
+        }
+
+        function getText($node){
+            const $c = $node.contents();
+            if($c.length === 1){
+                return $node.text();
+            }else{
+                let T = '';
+                for(var i = 0; i < $c.length; i++){
+                    const $n = $c.eq(i);
+                    const n = $n[0];
+                    if(n.nodeType === 3){
+                        T = `${T}${$n.text()} `;
+                    }else if(n.tagName !== 'BR'){
+                        T = `${T}${getText($n)} `;
+                    }
+                }
+                if(T != ''){
+                    T = T.substring(0, T.length -1);
+                }
+                return T
             }
+        }
+
+        function getCustomerBookings(){
+            const $container = $('#tables-container').eq(0);
+            const $table_itemNames = $container.find('aside.fixedTable-sidebar>table').eq(0);
+            const $table_customers = $container.find('#customer_calendar').eq(0);
+
+            const $itemRows = $table_itemNames.find('tr');
+            const $customerRows = $table_customers.find('tr');
+
+            const returnData = [];
+
+            let currentCategoryId = -1;
+            let currentCategoryName = '';
+            let currentCategoryNameLower = '';
+
+            let currentItemName = '';
+            let currentItemNameLower = '';
+
+            const global_date = getCalDates().startDate;
+            const global_Y = global_date.getFullYear();
+            const global_M = global_date.getMonth() + 1;
+
+            for(var i = 0; i < $itemRows.length; i++){
+                const $itemRow = $itemRows.eq(i);
+                const $customerRow = $customerRows.eq(i);
+                const $ths = $itemRow.find('th');
+                if($ths.length > 0){
+                    const $th = $ths.eq(0);
+                    if($itemRow.hasClass('cat-row')){
+                        currentCategoryId = $th.attr('id');
+                        currentCategoryName = getText($th);
+                        currentCategoryNameLower = currentCategoryName.toLowerCase();
+                    }else{
+                        currentItemName = getText($th);
+                        currentItemNameLower = currentItemName.toLowerCase();
+                    }
+                }
+
+                const $custRow = $customerRows.eq(i);
+                const $anchors = $custRow.find('a.D.S');
+
+                for(var j = 0; j < $anchors.length; j++){
+                    const $anchor = $anchors.eq(j);
+                    const $td = $anchor.parent();
+                    const D_str = $td.data('date');
+                    const local_M = parseInt(D_str.substring(D_str.length - 4, D_str.length - 2));
+                    const local_D = parseInt(D_str.substring(D_str.length - 2, D_str.length));
+                    const local_Y = (local_M < global_M)?(global_Y + 1):global_Y;
+                    const local_date = new Date(local_Y, local_M - 1, local_D);
+
+                    returnData.push( {
+                        item:{name:currentItemName,
+                              nameLower:currentItemNameLower,
+                              categoryId:currentCategoryId,
+                              categoryName:currentCategoryName,
+                              categoryNameLower:currentCategoryNameLower
+                             },
+                        anchor:$anchor,
+                        startDate:local_date,
+                        startDateYMD:DATES.toYYYYMMDD(local_date),
+                        bookingCode:getBookingCodeFrom($anchor.attr('href')),
+                    });
+                }
+            }
+
+            return returnData;
+        }
+
+        function doTagging(){
+            const dates = getCalDates();
+            const bookings = getCustomerBookings();
+
+            if(bookings.length === 0){return;}
+
+            function doTagging_1(data, result, xhr){
+                const salesReport = CSV.parse(data);
+                _cache[`${DATES.toYYYYMMDD(dates.startDate)}${DATES.toYYYYMMDD(dates.endDate)}`] = salesReport;
+                doTagging_2(salesReport);
+            }
+            function doTagging_2(salesReport){
+                for(var i = 0; i < bookings.length; i++){
+                    const B = bookings[i];
+                    let $em = B.anchor.find('em');
+                    if($em.length === 0){
+                        for(var j = 1; j < salesReport.length; j++){
+                            const S = salesReport[j];
+                            if((B.bookingCode == S['Booking Code']) &&
+                               (B.item.categoryNameLower == S['Category Name'].toLowerCase()) &&
+                               (B.item.nameLower == S['Item Name'].toLowerCase()) &&
+                               ((B.startDateYMD == S['Item Start Date']) ||
+                                ((new Date(S['Item Start Date']) < dates.startDate) && (new Date(S['Item End Date']) >= dates.startDate))
+                               )){
+
+                                $em = $(`<em>${DAILYMANIFEST.export.row_utils.roomType(S)}</em>`);
+                                B.anchor.attr('style','padding-top:0 !important;max-height:30px');
+                                B.anchor.append($em);
+                            }
+                        }
+                    }
+                }
+                PROGRESS.hide();
+            }
+
+            const ymd = `${DATES.toYYYYMMDD(dates.startDate)}${DATES.toYYYYMMDD(dates.endDate)}`;
+            if(Object.hasOwn(_cache, ymd)){
+                console.log('Sales report is cached');
+                doTagging_2(_cache[ymd]);
+            }else{
+                PROGRESS.setMessage('Loading tags...')
+                SALES_REPORT.from_to(dates.startDate,dates.endDate).then(doTagging_1);
+            }
+        }
+
+        return {
+            tag:doTagging,
         }
     })();
 
@@ -1228,13 +1447,14 @@ a.scriptGuestBtn{
         $table.addClass('scriptTable');
     }
 
-    function getBookingCode(){
+    function getBookingCodeFrom(str){
         const bookingCode = /([A-Z]{4}-\d{6})/;
-        const m = bookingCode.exec(window.location);
+        const m = bookingCode.exec(str);
         if(m !== null){return m[1];}
-
-
         return null;
+    }
+    function getBookingCode(){
+        return getBookingCodeFrom(window.location);
     }
 
     function stringToUtf8Blob(str,mimeSubType){
@@ -2220,28 +2440,32 @@ a.scriptGuestBtn{
 
     function AddGuestImportButton(){
         const $sidebar = $('#sidebar');
-        if($sidebar.children('#makeGuestListEasyImport1').length !== 0){console.log('#makeGuestListEasyImport1 already exists'); return;}
 
-        const $btn = $('<a id="makeGuestListEasyImport1" class="btn btn-default ico wopen templateBtn"><i class="fa fa-file-export"></i><b>CSV import template</b></a>');
-        $sidebar.append($btn);
-        $btn.on('click',function(event){event.preventDefault(); DoGenerateGuestImportTemplate();});
+        (()=>{
+            if($sidebar.children('#makeGuestListEasyImport1').length !== 0){console.log('#makeGuestListEasyImport1 already exists'); return;}
 
-        if($sidebar.children('#makeGuestListEasyImport2').length !== 0){console.log('#makeGuestListEasyImport2 already exists'); return;}
+            const $btn = $('<a id="makeGuestListEasyImport1" class="btn btn-default ico wopen templateBtn"><i class="fa fa-file-export"></i><b>CSV import template</b></a>');
+            $sidebar.append($btn);
+            $btn.on('click',function(event){event.preventDefault(); DoGenerateGuestImportTemplate();});
+        })()
 
-        const $btn2 = $('<a id="makeGuestListEasyImport2" class="btn btn-default ico wopen importBtn"><i class="fa fa-file-import"></i><b>Import CSV</b><br></a>');
-        const $csvFile = $('<input type="file" id="makeGuestListEasyImportFile">');
-        $btn2.append($csvFile);
+        (()=>{
+            if($sidebar.children('#makeGuestListEasyImport2').length !== 0){console.log('#makeGuestListEasyImport2 already exists'); return;}
 
-        $csvFile.on('change',function(event){
-            const file = event.target.files[0];
-            DoGuestImportCSV(file);
-        });
-        $sidebar.append($btn2);
+            const $btn2 = $('<a id="makeGuestListEasyImport2" class="btn btn-default ico wopen importBtn"><i class="fa fa-file-import"></i><b>Import CSV</b><br></a>');
+            const $csvFile = $('<input type="file" id="makeGuestListEasyImportFile">');
+            $btn2.append($csvFile);
 
+            $csvFile.on('change',function(event){
+                const file = event.target.files[0];
+                DoGuestImportCSV(file);
+            });
+            $sidebar.append($btn2);
+        })();
     }
 
     function AddColumnSelections(){
-        if($('#myDefaultColumnSelector').length !== 0){return;}
+        if($('#myDefaultColumnSelector').length !== 0){console.log('#myDefaultColumnSelector already exists'); return;}
 
         const $divs = $('div[class^="Title_"]').filter(function(index){return $(this).text() == 'Columns';}).eq(0);
         if($divs.length === 0){return;}
@@ -2277,7 +2501,9 @@ a.scriptGuestBtn{
 
                 break;
             case /calendar\/customer/.test(window.location):
-                console.log('customer calendar - NOP');
+                console.log('CUSTOMER_CALENDAR.tag()');
+                CUSTOMER_CALENDAR.tag();
+                //console.log('customer calendar - NOP');
                 break;
             case /booking\/[A-Z]{4}-\d{6}\/guests/.test(window.location):
                 console.log('AddScrollHelpersToGuestPages');
@@ -2310,66 +2536,3 @@ a.scriptGuestBtn{
     myObserver.observe($('#content')[0],observerOptions);
     //========================================================================================
 })($J_Master);
-
-
-
-/*
-    function ShowDialogNotBookingPageForCalendar(event){
-        event.preventDefault();
-        const $a = $(this);
-        const href = $a.attr('href');
-        const D = href.match(/D=(\d{8})/)[1];
-        const item_id = href.match(/filter_item_id=(\d+)/)[1];
-
-        console.log({'D':D,'item_id':item_id});
-    }
-
-    function tweakCalendarDateBookingLinks(){
-        const $content = $('#tables-container');;
-        const $anchors = $content.find('a[href^="/booking/reserve/?"]');
-        console.log($anchors.length);
-        for(const a of $anchors){
-            const $a = $(a);
-            if(!(!!$a.data('marked'))){
-                $a.data('marked',true);
-                $a.css({color:'red'});
-
-                $a.on('click',ShowDialogNotBookingPageForCalendar);
-            }
-        }
-    }
-
-    const $divider = $('<li class="divider"></li>');
-    const $reportButton = $('<li><a href="about:blank">Overnight Report</a></li>');
-    $reportButton.on('click', (event)=>{
-        event.preventDefault();
-        DoCsvProcess();
-    });
-
-    (function AddMenuItems_Main(){
-        const $navTab = $('#reports-nav-tab');
-        if($navTab.length === 0){console.log('#reports-nav-tab not found'); return}
-
-        const $navUl = $navTab.children('UL');
-        if($navTab.length !== 1){console.log('UL not found'); return}
-
-        const $lastMenuItem = $navUl.children('LI').last();
-
-        $lastMenuItem.before($reportButton.clone(true,true));
-        $lastMenuItem.before($divider.clone(true,true));
-    })();
-    (function AddMobileMenuItems(){
-        const $navMenuItem = $('a#main-nav-menu-reports');
-        if($navMenuItem.length !== 1){console.log('a#main-nav-menu-reports not found'); return}
-
-        const $navMenuParent = $navMenuItem.parent();
-        const $navUl = $navMenuParent.children('UL');
-        if($navUl.length !== 1){console.log('UL not found'); return}
-
-        const $lastMenuItem = $navUl.children('LI').last();
-
-        $lastMenuItem.before($reportButton.clone(true,true));
-        $lastMenuItem.before($divider.clone(true,true));
-    })();
-
-*/
