@@ -19,70 +19,6 @@ console.log('Hello world');
 
     console.log('Running main function...');
 
-    ( //BASED ON: https://stackoverflow.com/questions/4232557/jquery-css-write-into-the-style-tag
-        function( $$ ){
-            $$.cssStyleSheet={
-                insertRule:function(selector,rules,contxt){
-                    var context=contxt||document,stylesheet;
-
-                    if(typeof context.styleSheets=='object')
-                    {
-                        if(context.styleSheets.length)
-                        {
-                            stylesheet=context.styleSheets[context.styleSheets.length-1];
-                        }
-                        if(!stylesheet)
-                        {
-                            if(context.createStyleSheet)
-                            {
-                                stylesheet=context.createStyleSheet();
-                            }
-                            else
-                            {
-                                context.getElementsByTagName('head')[0].appendChild(context.createElement('style'));
-                                stylesheet=context.styleSheets[context.styleSheets.length-1];
-                            }
-                        }
-                        if(stylesheet.addRule)
-                        {
-                            for(var i=0;i<selector.length;++i)
-                            {
-                                stylesheet.addRule(selector[i],rules);
-                            }
-                        }
-                        else
-                        {
-                            stylesheet.insertRule(selector.join(',') + '{' + rules + '}', stylesheet.cssRules.length);
-                        }
-                    }
-                },
-                createSheet:function(rules,contxt){
-                    const context = contxt||document;
-                    let stylesheet;
-                    if((document.adoptedStyleSheets) && (document.adoptedStyleSheets.push)){
-                        stylesheet = new CSSStyleSheet();
-                        if(stylesheet.replaceSync){
-                            stylesheet.replaceSync(rules);
-                        }
-                        else if(stylesheet.replace){
-                            stylesheet.replace(rules);
-                        }
-                        else
-                        {
-                            throw 'No replace function';
-                        }
-                        document.adoptedStyleSheets.push(stylesheet);
-                    }else{
-                        stylesheet = document.createElement('style')
-                        stylesheet.innerHTML = rules;
-                        document.head.appendChild(stylesheet);
-                    }
-                    return stylesheet;
-                }
-            };
-        }
-    )($);
-
     //================================ Helper functions ======================================
 
     const CSV = (function(){
@@ -1304,7 +1240,7 @@ console.log('Hello world');
     //Specifiying no item ids to match against the param will be checked against all items.
     const GUEST_IMPORT_PARAMS = [{items:[],guest_type:'guestformtest'},{items:[],guest_type:'guest'}];
 
-    const MY_CSS = `
+    GM_addStyle(`
 table.scriptTable{
     border:1px solid black;
     width:100%;
@@ -1436,9 +1372,7 @@ a.scriptGuestBtn{
     width:51%;
     display:none;
 }
-`;
-
-    $.cssStyleSheet.createSheet(MY_CSS);
+`);
 
     //========================================================================================
 
@@ -2536,3 +2470,66 @@ a.scriptGuestBtn{
     myObserver.observe($('#content')[0],observerOptions);
     //========================================================================================
 })($J_Master);
+
+
+
+/*
+    function ShowDialogNotBookingPageForCalendar(event){
+        event.preventDefault();
+        const $a = $(this);
+        const href = $a.attr('href');
+        const D = href.match(/D=(\d{8})/)[1];
+        const item_id = href.match(/filter_item_id=(\d+)/)[1];
+
+        console.log({'D':D,'item_id':item_id});
+    }
+
+    function tweakCalendarDateBookingLinks(){
+        const $content = $('#tables-container');;
+        const $anchors = $content.find('a[href^="/booking/reserve/?"]');
+        console.log($anchors.length);
+        for(const a of $anchors){
+            const $a = $(a);
+            if(!(!!$a.data('marked'))){
+                $a.data('marked',true);
+                $a.css({color:'red'});
+
+                $a.on('click',ShowDialogNotBookingPageForCalendar);
+            }
+        }
+    }
+
+    const $divider = $('<li class="divider"></li>');
+    const $reportButton = $('<li><a href="about:blank">Overnight Report</a></li>');
+    $reportButton.on('click', (event)=>{
+        event.preventDefault();
+        DoCsvProcess();
+    });
+
+    (function AddMenuItems_Main(){
+        const $navTab = $('#reports-nav-tab');
+        if($navTab.length === 0){console.log('#reports-nav-tab not found'); return}
+
+        const $navUl = $navTab.children('UL');
+        if($navTab.length !== 1){console.log('UL not found'); return}
+
+        const $lastMenuItem = $navUl.children('LI').last();
+
+        $lastMenuItem.before($reportButton.clone(true,true));
+        $lastMenuItem.before($divider.clone(true,true));
+    })();
+    (function AddMobileMenuItems(){
+        const $navMenuItem = $('a#main-nav-menu-reports');
+        if($navMenuItem.length !== 1){console.log('a#main-nav-menu-reports not found'); return}
+
+        const $navMenuParent = $navMenuItem.parent();
+        const $navUl = $navMenuParent.children('UL');
+        if($navUl.length !== 1){console.log('UL not found'); return}
+
+        const $lastMenuItem = $navUl.children('LI').last();
+
+        $lastMenuItem.before($reportButton.clone(true,true));
+        $lastMenuItem.before($divider.clone(true,true));
+    })();
+
+*/
