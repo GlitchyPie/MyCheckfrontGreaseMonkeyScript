@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Checkfront Overnight Report Helper Script DEV
+// @name         Checkfront Overnight Report Helper Script DEV VERSION
 // @namespace    http://cat.checkfront.co.uk/
-// @version      DEV_2025-11-17T09:07
+// @version      DEV_2025-11-19T09:23
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -1041,6 +1041,8 @@ console.log('Hello world');
             const global_Y = global_date.getFullYear();
             const global_M = global_date.getMonth() + 1;
 
+            const countRx = /^(.+)\s\(\d+\)$/;
+
             for(var i = 0; i < $itemRows.length; i++){
                 const $itemRow = $itemRows.eq(i);
                 const $customerRow = $customerRows.eq(i);
@@ -1049,7 +1051,12 @@ console.log('Hello world');
                     const $th = $ths.eq(0);
                     if($itemRow.hasClass('cat-row')){
                         currentCategoryId = $th.attr('id');
-                        currentCategoryName = getText($th);
+                        let workingName = getText($th);
+                        const M = countRx.exec(workingName);
+                        if(M != null){
+                            workingName = M[1];
+                        }
+                        currentCategoryName = workingName;
                         currentCategoryNameLower = currentCategoryName.toLowerCase();
                     }else{
                         currentItemName = getText($th);
@@ -1090,7 +1097,6 @@ console.log('Hello world');
         function doTagging(){
             const dates = getCalDates();
             const bookings = getCustomerBookings();
-
             if(bookings.length === 0){return;}
 
             function doTagging_1(data, result, xhr){
@@ -1098,6 +1104,7 @@ console.log('Hello world');
                 _cache[`${DATES.toYYYYMMDD(dates.startDate)}${DATES.toYYYYMMDD(dates.endDate)}`] = salesReport;
                 doTagging_2(salesReport);
             }
+
             function doTagging_2(salesReport){
                 for(var i = 0; i < bookings.length; i++){
                     const B = bookings[i];
@@ -1124,13 +1131,20 @@ console.log('Hello world');
 
             const ymd = `${DATES.toYYYYMMDD(dates.startDate)}${DATES.toYYYYMMDD(dates.endDate)}`;
             if(Object.hasOwn(_cache, ymd)){
-                console.log('Sales report is cached');
-                doTagging_2(_cache[ymd]);
+                if(_cache[ymd] !== true){
+                    console.log('Sales report is cached');
+                    doTagging_2(_cache[ymd]);
+                }else{
+                    console.log('Sales report is already loading');
+                }
             }else{
+                _cache[ymd] = true;
                 PROGRESS.setMessage('Loading tags...')
                 SALES_REPORT.from_to(dates.startDate,dates.endDate).then(doTagging_1);
             }
         }
+
+
 
         return {
             tag:doTagging,
@@ -2279,6 +2293,53 @@ a.scriptGuestBtn{
         }
     }
 
+    //----- Customer Calendar ----
+
+    function addTagCheckBox(tagsOn){
+        const $current = $('#showTags')
+        if($current.length > 0){
+            if(tagsOn === true){
+                $current.attr('checked','');
+            }else{
+                $current.removeAttr('checked');
+            }
+            $current.prop('checked', tagsOn);
+            console.log('#showTags already exists'); 
+            return;
+        }
+
+        const $cbTemplateInput = $('#vacant');
+        const $rootContainer = $cbTemplateInput.closest('div.checkbox-widget');
+        
+        const $newRootContainer = $rootContainer.clone(false, false);
+        const $newCb = $newRootContainer.children().eq(0);
+        const $newCbSpan = $newCb.children('span').eq(0);
+        const $newCbLabel = $newCbSpan.children('label').eq(0);
+        const $newCbInput = $newCbLabel.children('input').eq(0);
+        
+        $newRootContainer.empty();
+
+        $newCbSpan.attr('title','Show room types');
+
+        $newCbLabel.attr('for','showTags');
+
+        $newCbInput.attr('id','showTags');
+        $newCbInput.attr('name','showTags');
+        if(tagsOn === true){
+            $newCbInput.prop('checked', true);
+            $newCbInput.attr('checked','');
+        }else{
+            $newCbInput.removeAttr('checked');
+            $newCbInput.prop('checked', false);
+        }
+
+        $newCbLabel.contents().eq(-1)[0].nodeValue = 'Show room labels';
+        
+        $newRootContainer.append($newCb);
+
+        $newRootContainer.insertAfter($rootContainer);
+    }
+
     //----- Guest Forms ----
     //*******************************
     //* The guest list is very hard to manage, needing to scroll up and down all the time.
@@ -2422,7 +2483,12 @@ a.scriptGuestBtn{
     }
     function DoMods_CustomerCalendar(){
         console.log('CUSTOMER_CALENDAR.tag()');
-        CUSTOMER_CALENDAR.tag();
+        const P = new URLSearchParams(window.location.search);
+        const tagsOn = (P.get('showTags') == '1')
+        addTagCheckBox(tagsOn);
+        if(tagsOn){
+            CUSTOMER_CALENDAR.tag();
+        }
     }
     function DoMods_GuestForms(){
         console.log('AddScrollHelpersToGuestPages');
