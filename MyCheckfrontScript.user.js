@@ -2422,7 +2422,8 @@ a.scriptGuestBtn{
     }
     function DoMods_CustomerCalendar(){
         console.log('CUSTOMER_CALENDAR.tag()');
-        CUSTOMER_CALENDAR.tag();
+        //TODO: Make this optional
+        //CUSTOMER_CALENDAR.tag();
     }
     function DoMods_GuestForms(){
         console.log('AddScrollHelpersToGuestPages');
