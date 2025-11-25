@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkfront Overnight Report Helper Script
 // @namespace    http://cat.checkfront.co.uk/
-// @version      2025-11-19T10:48
+// @version      2025-11-25T08:57
 // @description  Add additional reporting functions / formats to CheckFront
 // @author       GlitchyPies
 // @match        https://cat.checkfront.co.uk/*
@@ -2295,15 +2295,20 @@ a.scriptGuestBtn{
 
     //----- Customer Calendar ----
 
+    function setCBchecked($cb, checked){
+        if(checked){
+            $cb.attr('checked','');
+            $cb.parent().addClass('active');
+        }else{
+            $cb.removeAttr('checked');
+            $cb.parent().removeClass('active');
+        }
+        $cb.prop('checked', checked);
+    }
     function addTagCheckBox(tagsOn){
         const $current = $('#showTags')
         if($current.length > 0){
-            if(tagsOn === true){
-                $current.attr('checked','');
-            }else{
-                $current.removeAttr('checked');
-            }
-            $current.prop('checked', tagsOn);
+            setCBchecked($current, tagsOn);
             console.log('#showTags already exists'); 
             return;
         }
@@ -2325,13 +2330,7 @@ a.scriptGuestBtn{
 
         $newCbInput.attr('id','showTags');
         $newCbInput.attr('name','showTags');
-        if(tagsOn === true){
-            $newCbInput.prop('checked', true);
-            $newCbInput.attr('checked','');
-        }else{
-            $newCbInput.removeAttr('checked');
-            $newCbInput.prop('checked', false);
-        }
+        setCBchecked($newCbInput, tagsOn);
 
         $newCbLabel.contents().eq(-1)[0].nodeValue = 'Show room labels';
         
